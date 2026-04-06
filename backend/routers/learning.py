@@ -1,0 +1,528 @@
+"""
+学习路由 - 包含错题复习功能
+"""
+import json
+import random
+from datetime import datetime, timedelta
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from database import get_db
+from models import User, UserProfile, WordLibrary, LearningSession, DailyRecord, WordLibraryBase, WrongQuestion
+from routers.auth import get_current_user
+from routers.wrong_questions import add_to_wrong_book
+from models import LearningSessionCreate
+
+router = APIRouter(prefix="/api/learning", tags=["学习"])
+
+# 新词和错题复习的比例
+REVIEW_RATIO = 0.4  # 40% 复习错题，60% 新词
+
+
+@router.get("/today")
+def get_today_learning(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取今日学习数据 - 包含新词学习和错题复习"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # 获取用户配置文件
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="用户配置不存在")
+    
+    daily_goal = profile.daily_goal
+    
+    # ===== 1. 获取今日需要复习的错题 =====
+    review_words = db.query(WrongQuestion).filter(
+        WrongQuestion.user_id == current_user.id,
+        WrongQuestion.status == "reviewing",
+        WrongQuestion.next_review_date <= today
+    ).order_by(WrongQuestion.next_review_date.asc()).all()
+    
+    # 随机打乱复习顺序
+    review_words = list(review_words)
+    random.shuffle(review_words)
+    
+    # 计算复习数量（根据比例）
+    review_count = min(int(daily_goal * REVIEW_RATIO), len(review_words))
+    review_words_today = review_words[:review_count]
+    
+    # ===== 2. 获取新词学习 =====
+    # 获取今日已学习的新词单词ID
+    today_sessions = db.query(LearningSession).filter(
+        LearningSession.user_id == current_user.id,
+        LearningSession.date == today
+    ).all()
+    learned_word_ids = [s.word_id for s in today_sessions]
+    
+    # 获取今日已复习的错题ID
+    reviewed_wrong_ids = [q.word_id for q in review_words_today]
+    
+    # 获取选中的词库
+    selected_lib_ids = json.loads(profile.selected_library_ids)
+    all_new_words = []
+    
+    for lib_id in selected_lib_ids:
+        lib = db.query(WordLibrary).filter(WordLibrary.id == lib_id).first()
+        if lib:
+            words = json.loads(lib.words)
+            # 过滤掉已学习的和需要复习的
+            remaining_words = [w for w in words if w["id"] not in learned_word_ids and w["id"] not in reviewed_wrong_ids]
+            all_new_words.extend(remaining_words)
+    
+    # 随机打乱
+    random.shuffle(all_new_words)
+    
+    # 新词数量 = 每日目标 - 复习数量
+    new_count = daily_goal - review_count
+    new_words_today = all_new_words[:max(new_count, 0)]
+    
+    # ===== 3. 合并今日任务 =====
+    # 优先显示复习任务
+    today_tasks = []
+    
+    # 添加复习任务（标记类型）
+    for w in review_words_today:
+        today_tasks.append({
+            "type": "review",
+            "id": w.id,
+            "word_id": w.word_id,
+            "word": w.word,
+            "phonetic": w.phonetic,
+            "meaning": w.meaning,
+            "wrong_count": w.wrong_count,
+            "correct_count": w.correct_count
+        })
+    
+    # 添加新词任务
+    for w in new_words_today:
+        today_tasks.append({
+            "type": "new",
+            "id": w["id"],
+            "word_id": w["id"],
+            "word": w["word"],
+            "phonetic": w["phonetic"],
+            "meaning": w["meaning"]
+        })
+    
+    # 随机打乱任务顺序（复习和新词交替）
+    random.shuffle(today_tasks)
+    
+    # 获取今日记录
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    # 统计
+    new_learned = daily_record.words_learned if daily_record else 0
+    review_completed = daily_record.review_completed if daily_record else 0
+    
+    return {
+        "daily_goal": daily_goal,
+        "new_words_learned": new_learned,
+        "review_completed": review_completed,
+        "remaining_new": len(all_new_words),
+        "remaining_review": len(review_words) - review_count,
+        "today_tasks": today_tasks,
+        "signed_in": daily_record.signed_in if daily_record else False,
+        "total_score": daily_record.total_score if daily_record else 0,
+        "review_count": len(review_words_today),
+        "new_count": len(new_words_today)
+    }
+
+
+@router.post("/session")
+def create_learning_session(
+    session_data: LearningSessionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """创建学习记录 - 答错自动加入错题本"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    is_wrong = session_data.total_score < 60  # 低于60分算答错
+    
+    # 创建学习记录
+    session = LearningSession(
+        user_id=current_user.id,
+        date=today,
+        word_id=session_data.word_id,
+        pronunciation_score=session_data.pronunciation_score,
+        meaning_score=session_data.meaning_score,
+        total_score=session_data.total_score
+    )
+    db.add(session)
+    
+    # 如果答错，加入错题本
+    if is_wrong:
+        # 需要获取单词详情
+        libraries = db.query(WordLibrary).all()
+        word_info = None
+        for lib in libraries:
+            words = json.loads(lib.words)
+            for w in words:
+                if w["id"] == session_data.word_id:
+                    word_info = w
+                    break
+            if word_info:
+                break
+        
+        if word_info:
+            add_to_wrong_book(
+                db=db,
+                user_id=current_user.id,
+                word_id=session_data.word_id,
+                word=word_info["word"],
+                phonetic=word_info["phonetic"],
+                meaning=word_info["meaning"]
+            )
+    
+    # 更新用户总分
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if profile:
+        profile.total_score += session_data.total_score
+    
+    # 更新或创建每日记录
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    if daily_record:
+        daily_record.words_learned += 1
+        daily_record.total_score += session_data.total_score
+    else:
+        daily_record = DailyRecord(
+            user_id=current_user.id,
+            date=today,
+            words_learned=1,
+            total_score=session_data.total_score,
+            signed_in=False
+        )
+        db.add(daily_record)
+    
+    db.commit()
+    
+    return {
+        "message": "学习记录已保存",
+        "session_id": session.id,
+        "added_to_wrong_book": is_wrong
+    }
+
+
+@router.post("/review")
+def submit_review_result(
+    wrong_question_id: int,
+    score: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """提交错题复习结果"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    question = db.query(WrongQuestion).filter(
+        WrongQuestion.id == wrong_question_id,
+        WrongQuestion.user_id == current_user.id
+    ).first()
+    
+    if not question:
+        raise HTTPException(status_code=404, detail="错题不存在")
+    
+    is_correct = score >= 60
+    
+    # 更新错题状态
+    question.last_review_date = today
+    question.correct_count += 1 if is_correct else 0
+    question.wrong_count += 1 if not is_correct else 0
+    
+    # 计算下次复习日期
+    from routers.wrong_questions import calculate_next_review
+    question.next_review_date = calculate_next_review(question.wrong_count, question.correct_count)
+    
+    # 标记为已掌握
+    if question.correct_count >= 5 and question.wrong_count <= 2:
+        question.status = "mastered"
+    
+    question.updated_at = today
+    
+    # 添加复习记录
+    from models import ReviewRecord
+    record = ReviewRecord(
+        user_id=current_user.id,
+        wrong_question_id=wrong_question_id,
+        review_date=today,
+        score=score,
+        is_correct=is_correct
+    )
+    db.add(record)
+    
+    # 更新今日复习完成数
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    if daily_record:
+        daily_record.review_completed += 1
+    else:
+        daily_record = DailyRecord(
+            user_id=current_user.id,
+            date=today,
+            words_learned=0,
+            total_score=0,
+            signed_in=False,
+            review_completed=1
+        )
+        db.add(daily_record)
+    
+    # 奖励积分
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if profile:
+        profile.total_score += score
+    
+    db.commit()
+    
+    return {
+        "message": "复习记录已保存",
+        "is_correct": is_correct,
+        "next_review_date": question.next_review_date,
+        "status": question.status
+    }
+
+
+@router.post("/signin")
+def sign_in(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """每日签到"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # 检查今日是否已签到
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    if daily_record and daily_record.signed_in:
+        raise HTTPException(status_code=400, detail="今日已签到")
+    
+    # 签到奖励积分
+    bonus_score = 5
+    
+    if daily_record:
+        daily_record.signed_in = True
+    else:
+        daily_record = DailyRecord(
+            user_id=current_user.id,
+            date=today,
+            words_learned=0,
+            total_score=bonus_score,
+            signed_in=True
+        )
+        db.add(daily_record)
+    
+    # 更新用户总分
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if profile:
+        profile.total_score += bonus_score
+        profile.last_sign_in = today
+    
+    db.commit()
+    
+    return {"message": "签到成功", "bonus_score": bonus_score}
+
+
+@router.get("/random-words")
+def get_random_words(
+    count: int = 10,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取随机单词用于测试"""
+    # 获取所有系统词库
+    libraries = db.query(WordLibrary).filter(WordLibrary.type == "system").all()
+    
+    all_words = []
+    for lib in libraries:
+        words = json.loads(lib.words)
+        all_words.extend(words)
+    
+    # 随机选择
+    random.shuffle(all_words)
+    selected = all_words[:count]
+    
+    # 隐藏含义
+    for word in selected:
+        word["meaning"] = "???"
+    
+    return selected
+
+
+@router.get("/quiz-options/{word_id}")
+def get_quiz_options(
+    word_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取4选1选择题选项"""
+    # 获取该单词
+    libraries = db.query(WordLibrary).all()
+    target_word = None
+    
+    for lib in libraries:
+        words = json.loads(lib.words)
+        for w in words:
+            if w["id"] == word_id:
+                target_word = w
+                break
+        if target_word:
+            break
+    
+    # 如果没找到（可能是错题本里的）
+    if not target_word:
+        wrong = db.query(WrongQuestion).filter(
+            WrongQuestion.word_id == word_id,
+            WrongQuestion.user_id == current_user.id
+        ).first()
+        if wrong:
+            target_word = {
+                "id": wrong.word_id,
+                "word": wrong.word,
+                "meaning": wrong.meaning
+            }
+    
+    if not target_word:
+        raise HTTPException(status_code=404, detail="单词不存在")
+    
+    # 获取其他单词作为干扰项
+    all_words = []
+    for lib in libraries:
+        words = json.loads(lib.words)
+        all_words.extend(words)
+    
+    # 过滤掉目标单词
+    other_words = [w for w in all_words if w["id"] != word_id]
+    random.shuffle(other_words)
+    
+    # 选择3个干扰项
+    distractors = other_words[:3]
+    
+    # 合并并随机打乱
+    options = [
+        {"text": target_word["meaning"], "correct": True},
+        {"text": distractors[0]["meaning"], "correct": False},
+        {"text": distractors[1]["meaning"], "correct": False},
+        {"text": distractors[2]["meaning"], "correct": False},
+    ]
+    random.shuffle(options)
+    
+    return {
+        "word_id": word_id,
+        "word": target_word.get("word", target_word.get("word")),
+        "phonetic": target_word.get("phonetic", ""),
+        "options": options
+    }
+
+
+@router.post("/submit-quiz")
+async def submit_quiz_result(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """提交选择题结果"""
+    try:
+        body = await request.json()
+    except:
+        return {"detail": "Invalid JSON"}
+    
+    word_id = body.get("word_id")
+    selected_meaning = body.get("selected_meaning")
+    pronunciation_score = body.get("pronunciation_score", 50)
+    
+    if not word_id or not selected_meaning:
+        return {"detail": "Missing word_id or selected_meaning"}
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # 获取该单词
+    libraries = db.query(WordLibrary).all()
+    target_word = None
+    
+    for lib in libraries:
+        words = json.loads(lib.words)
+        for w in words:
+            if w["id"] == word_id:
+                target_word = w
+                break
+        if target_word:
+            break
+    
+    # 检查答案是否正确
+    is_correct = target_word and target_word["meaning"] == selected_meaning
+    meaning_score = 50 if is_correct else 0
+    
+    # 计算总分：发音(50分) + 含义(50分)
+    total_score = pronunciation_score + meaning_score
+    
+    # 创建学习记录
+    session = LearningSession(
+        user_id=current_user.id,
+        date=today,
+        word_id=word_id,
+        pronunciation_score=pronunciation_score,
+        meaning_score=meaning_score,
+        total_score=total_score
+    )
+    db.add(session)
+    
+    # 如果答错，加入错题本
+    if not is_correct and target_word:
+        add_to_wrong_book(
+            db=db,
+            user_id=current_user.id,
+            word_id=word_id,
+            word=target_word["word"],
+            phonetic=target_word.get("phonetic", ""),
+            meaning=target_word["meaning"]
+        )
+    
+    # 更新用户总分
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if profile:
+        profile.total_score += total_score
+    
+    # 更新或创建每日记录
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    if daily_record:
+        daily_record.words_learned += 1
+        daily_record.total_score += total_score
+    else:
+        daily_record = DailyRecord(
+            user_id=current_user.id,
+            date=today,
+            words_learned=1,
+            total_score=total_score,
+            signed_in=False
+        )
+        db.add(daily_record)
+    
+    db.commit()
+    
+    return {
+        "is_correct": is_correct,
+        "meaning_score": meaning_score,
+        "pronunciation_score": pronunciation_score,
+        "total_score": total_score,
+        "correct_meaning": target_word["meaning"] if target_word else "",
+        "added_to_wrong_book": not is_correct and target_word is not None
+    }

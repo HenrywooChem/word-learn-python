@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单词学习 - Python版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+    
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="min-h-screen">
+        <!-- 登录/注册页面 -->
+        <div v-if="!currentUser" class="page active">
+            <div class="min-h-screen flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-book-open-line text-white text-3xl"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-800">单词学习</h1>
+                        <p class="text-gray-500 mt-2">Python 版</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                            <input v-model="loginForm.username" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="请输入用户名">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                            <input v-model="loginForm.password" type="password" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="请输入密码" @keyup.enter="login">
+                        </div>
+                        <button @click="login" class="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition">
+                            登录
+                        </button>
+                        <div class="text-center text-gray-500 text-sm">
+                            还没有账号？ <a href="#" @click.prevent="showRegister = true" class="text-blue-500">立即注册</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 注册弹窗 -->
+            <div v-if="showRegister" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                    <h2 class="text-xl font-bold mb-4">注册新账号</h2>
+                    <div class="space-y-3">
+                        <input v-model="registerForm.name" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="姓名">
+                        <input v-model="registerForm.username" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="用户名">
+                        <input v-model="registerForm.password" type="password" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="密码">
+                        <select v-model="registerForm.role" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none">
+                            <option value="child">孩子</option>
+                            <option value="parent">家长</option>
+                        </select>
+                        <div class="flex gap-3">
+                            <button @click="showRegister = false" class="flex-1 py-3 border border-gray-200 rounded-xl">取消</button>
+                            <button @click="register" class="flex-1 py-3 bg-blue-500 text-white rounded-xl">注册</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主应用 -->
+        <div v-else class="page active">
+            <!-- 顶部导航 -->
+            <header class="bg-white shadow-sm sticky top-0 z-40">
+                <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                            <i class="ri-book-open-line text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-gray-800">{{ currentUser.name }}</h1>
+                            <p class="text-xs text-gray-500">积分: {{ profile.total_score }}</p>
+                        </div>
+                    </div>
+                    <button @click="signOut" class="p-2 text-gray-500 hover:text-gray-700">
+                        <i class="ri-logout-box-line text-xl"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- 页面内容 -->
+            <main class="max-w-2xl mx-auto p-4 pb-20">
+                <!-- 首页 -->
+                <div v-if="currentPage === 'home'" class="space-y-6">
+                    <!-- 今日进度 -->
+                    <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 text-white">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 class="text-lg font-medium opacity-90">今日学习</h2>
+                                <p class="text-4xl font-bold mt-1">{{ todayData.new_words_learned + todayData.review_completed }} / {{ todayData.daily_goal }}</p>
+                                <p class="text-sm opacity-80 mt-1">
+                                    新词: {{ todayData.new_words_learned }} | 复习: {{ todayData.review_completed }}/{{ todayData.review_count }}
+                                </p>
+                            </div>
+                            <div class="w-16 h-16 relative">
+                                <svg class="w-16 h-16 transform -rotate-90">
+                                    <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.2)" stroke-width="4" fill="none"/>
+                                    <circle cx="32" cy="32" r="28" stroke="white" stroke-width="4" fill="none" 
+                                        :stroke-dasharray="175.9" 
+                                        :stroke-dashoffset="175.9 - (175.9 * Math.min((todayData.new_words_learned + todayData.review_completed) / todayData.daily_goal, 1))"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 text-sm">
+                            <div class="flex items-center gap-1">
+                                <i class="ri-check-double-line"></i>
+                                <span>连续{{ stats.streak_days }}天</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <i class="ri-star-smile-line"></i>
+                                <span>今日积分: {{ todayData.total_score }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 错题本快捷入口 -->
+                    <div v-if="wrongStats.due_today > 0" @click="goTo('wrongbook')" class="bg-red-50 border border-red-200 rounded-2xl p-4 cursor-pointer hover:bg-red-100 transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                                    <i class="ri-error-warning-line text-red-500"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-red-700">错题复习</h3>
+                                    <p class="text-sm text-red-600">今日有 {{ wrongStats.due_today }} 道错题待复习</p>
+                                </div>
+                            </div>
+                            <i class="ri-arrow-right-line text-red-400"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 快捷操作 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <button @click="goTo('learning')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
+                                <i class="ri-book-read-line text-blue-500 text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800">开始学习</h3>
+                            <p class="text-sm text-gray-500 mt-1">新词 {{ todayData.remaining_new }} / 复习 {{ todayData.remaining_review }}</p>
+                        </button>
+                        
+                        <button @click="goTo('library')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
+                                <i class="ri-library-line text-purple-500 text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800">词库管理</h3>
+                            <p class="text-sm text-gray-500 mt-1">选择学习范围</p>
+                        </button>
+                        
+                        <button @click="goTo('wrongbook')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-3">
+                                <i class="ri-book-mark-line text-red-500 text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800">错题本</h3>
+                            <p class="text-sm text-gray-500 mt-1">{{ wrongStats.reviewing }} 待复习</p>
+                        </button>
+                        
+                        <button @click="goTo('records')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3">
+                                <i class="ri-bar-chart-line text-green-500 text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800">学习记录</h3>
+                            <p class="text-sm text-gray-500 mt-1">查看历史数据</p>
+                        </button>
+                    </div>
+                    
+                    <!-- 签到按钮 -->
+                    <button v-if="!todayData.signed_in" @click="signIn" class="w-full py-4 bg-yellow-400 text-gray-800 rounded-2xl font-bold hover:bg-yellow-500 transition flex items-center justify-center gap-2">
+                        <i class="ri-gift-line"></i>
+                        签到领积分
+                    </button>
+                    <div v-else class="text-center py-4 text-green-500">
+                        <i class="ri-checkbox-circle-fill"></i> 今日已签到
+                    </div>
+                </div>
+                
+                <!-- 学习页面 -->
+                <div v-if="currentPage === 'learning'" class="space-y-6">
+                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
+                        <i class="ri-arrow-left-line"></i> 返回
+                    </button>
+                    
+                    <!-- 任务类型提示 -->
+                    <div v-if="learningTask" class="flex items-center justify-center gap-2">
+                        <span v-if="learningTask.type === 'review'" class="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm">
+                            <i class="ri-refresh-line"></i> 错题复习
+                        </span>
+                        <span v-else class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm">
+                            <i class="ri-add-line"></i> 新词学习
+                        </span>
+                    </div>
+                    
+                    <div v-if="!learningTask" class="text-center py-12">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ri-check-line text-green-500 text-4xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800">今日任务完成！</h2>
+                        <p class="text-gray-500 mt-2">太棒了，明天继续加油！</p>
+                    </div>
+                    
+                    <!-- 加载选择题中 -->
+                    <div v-else-if="loadingQuiz" class="bg-white rounded-2xl shadow-sm p-8 text-center">
+                        <div class="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p class="text-gray-500">加载题目中...</p>
+                    </div>
+                    
+                    <!-- 选择题界面 -->
+                    <div v-else-if="quizData && !showResult" class="bg-white rounded-2xl shadow-sm p-8">
+                        <!-- 单词显示 -->
+                        <div class="text-center mb-8">
+                            <p class="text-gray-500 text-sm">请跟读单词</p>
+                            <h2 class="text-5xl font-bold text-gray-800 mt-2">{{ quizData.word }}</h2>
+                            <p class="text-gray-400 mt-2">{{ quizData.phonetic }}</p>
+                            
+                            <!-- 播放发音按钮 -->
+                            <button @click="playPronunciation(quizData.word)" class="mt-4 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition flex items-center gap-2 mx-auto">
+                                <i class="ri-volume-up-line text-xl"></i>
+                                播放标准发音
+                            </button>
+                        </div>
+                        
+                        <!-- 跟读按钮 -->
+                        <div class="text-center mb-8">
+                            <button @click="startRecording" 
+                                :class="isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500'"
+                                class="px-8 py-4 text-white rounded-xl font-bold hover:opacity-90 transition flex items-center gap-2 mx-auto">
+                                <i :class="isRecording ? 'ri-stop-circle-line' : 'ri-mic-line'" class="text-2xl"></i>
+                                {{ isRecording ? '停止跟读' : '点击跟读' }}
+                            </button>
+                            <p v-if="recognizedText" class="mt-2 text-gray-600">识别结果: {{ recognizedText }}</p>
+                        </div>
+                        
+                        <!-- 4选1选择题 -->
+                        <div class="mb-6">
+                            <p class="text-gray-600 text-center mb-4 font-medium">请选择正确的中文意思：</p>
+                            <div class="grid grid-cols-1 gap-3">
+                                <button v-for="(option, idx) in quizData.options" :key="idx"
+                                    @click="selectOption(option)"
+                                    :class="selectedOption === option ? (option.correct ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500') : 'bg-gray-50 border-gray-200 hover:bg-blue-50 hover:border-blue-300'"
+                                    class="p-4 border-2 rounded-xl text-left font-medium transition">
+                                    {{ option.text }}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 提交按钮 -->
+                        <button @click="submitQuiz" :disabled="!selectedOption"
+                            class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                            提交答案
+                        </button>
+                    </div>
+                    
+                    <!-- 结果展示 -->
+                    <div v-if="showResult" class="bg-white rounded-2xl shadow-sm p-8 text-center">
+                        <div :class="quizResult.is_correct ? 'bg-green-100' : 'bg-red-100'" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i :class="quizResult.is_correct ? 'ri-checkbox-circle-fill text-green-500' : 'ri-close-circle-fill text-red-500'" class="text-4xl"></i>
+                        </div>
+                        
+                        <h3 class="text-2xl font-bold mb-4">{{ quizResult.is_correct ? '回答正确！' : '回答错误' }}</h3>
+                        
+                        <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                            <p class="text-gray-600">得分：{{ quizResult.total_score }}分</p>
+                            <p class="text-sm text-gray-500 mt-1">发音得分：{{ quizResult.pronunciation_score }} + 含义得分：{{ quizResult.meaning_score }}</p>
+                            <p v-if="!quizResult.is_correct" class="text-sm text-red-500 mt-2">正确答案：{{ quizResult.correct_meaning }}</p>
+                        </div>
+                        
+                        <button @click="nextTask" class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold">
+                            下一题
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 词库页面 -->
+                <div v-if="currentPage === 'library'" class="space-y-6">
+                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
+                        <i class="ri-arrow-left-line"></i> 返回
+                    </button>
+                    
+                    <h2 class="text-xl font-bold text-gray-800">选择词库</h2>
+                    
+                    <div v-for="grade in ['小学', '初中', '高中']" :key="grade" class="space-y-3">
+                        <h3 class="font-medium text-gray-600">{{ grade }}</h3>
+                        <div v-for="lib in getLibrariesByGrade(grade)" :key="lib.id" 
+                            @click="toggleLibrary(lib.id)"
+                            :class="selectedLibraries.includes(lib.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
+                            class="bg-white border-2 rounded-xl p-4 cursor-pointer transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-bold text-gray-800">{{ lib.name }}</h4>
+                                    <p class="text-sm text-gray-500">{{ lib.description }}</p>
+                                    <p class="text-xs text-gray-400 mt-1">{{ lib.words.length }} 个单词</p>
+                                </div>
+                                <div :class="selectedLibraries.includes(lib.id) ? 'text-blue-500' : 'text-gray-300'">
+                                    <i :class="selectedLibraries.includes(lib.id) ? 'ri-checkbox-circle-fill' : 'ri-circle-line'" class="text-2xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button @click="saveLibrarySelection" class="w-full py-4 bg-blue-500 text-white rounded-xl font-bold">
+                        保存选择
+                    </button>
+                </div>
+                
+                <!-- 错题本页面 -->
+                <div v-if="currentPage === 'wrongbook'" class="space-y-6">
+                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
+                        <i class="ri-arrow-left-line"></i> 返回
+                    </button>
+                    
+                    <h2 class="text-xl font-bold text-gray-800">错题本</h2>
+                    
+                    <!-- 统计 -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-red-500">{{ wrongStats.total_wrong }}</p>
+                            <p class="text-sm text-gray-500">总错题</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-orange-500">{{ wrongStats.reviewing }}</p>
+                            <p class="text-sm text-gray-500">待复习</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-2xl font-bold text-green-500">{{ wrongStats.mastered }}</p>
+                            <p class="text-sm text-gray-500">已掌握</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 今日待复习 -->
+                    <div v-if="wrongStats.due_today > 0" class="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-red-700">今日待复习 ({{ wrongStats.due_today }})</h3>
+                            <button @click="goTo('learning')" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm">
+                                开始复习
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 错题列表 -->
+                    <div class="space-y-3">
+                        <h3 class="font-medium text-gray-600">错题列表</h3>
+                        <div v-for="q in wrongQuestions" :key="q.id" class="bg-white rounded-xl p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-bold text-gray-800">{{ q.word }}</h4>
+                                    <p class="text-sm text-gray-500">{{ q.phonetic }}</p>
+                                    <p class="text-sm text-gray-600 mt-1">{{ q.meaning }}</p>
+                                </div>
+                                <div class="text-right text-sm">
+                                    <p class="text-red-500">错 {{ q.wrong_count }} 次</p>
+                                    <p class="text-green-500">对 {{ q.correct_count }} 次</p>
+                                    <p class="text-gray-400 mt-1">下次: {{ q.next_review_date }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-3">
+                                <button @click="resetWrongQuestion(q.id)" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
+                                    重置进度
+                                </button>
+                                <button @click="deleteWrongQuestion(q.id)" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div v-if="wrongQuestions.length === 0" class="text-center py-8 text-gray-500">
+                            <i class="ri-book-mark-line text-4xl mb-2"></i>
+                            <p>暂无错题</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 记录页面 -->
+                <div v-if="currentPage === 'records'" class="space-y-6">
+                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
+                        <i class="ri-arrow-left-line"></i> 返回
+                    </button>
+                    
+                    <h2 class="text-xl font-bold text-gray-800">学习记录</h2>
+                    
+                    <!-- 统计卡片 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-blue-500">{{ stats.streak_days }}</p>
+                            <p class="text-sm text-gray-500">连续学习天数</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-purple-500">{{ stats.total_words }}</p>
+                            <p class="text-sm text-gray-500">已学单词</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-green-500">{{ stats.total_sessions }}</p>
+                            <p class="text-sm text-gray-500">学习次数</p>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-orange-500">{{ stats.average_score }}</p>
+                            <p class="text-sm text-gray-500">平均分数</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 每日记录 -->
+                    <div class="bg-white rounded-xl p-4">
+                        <h3 class="font-bold text-gray-800 mb-4">最近7天</h3>
+                        <div class="space-y-3">
+                            <div v-for="record in dailyRecords" :key="record.date" class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">{{ record.date }}</span>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-sm text-gray-500">{{ record.words_learned }} 词</span>
+                                    <span v-if="record.review_completed" class="text-sm text-orange-500">{{ record.review_completed }} 复习</span>
+                                    <span class="text-sm text-gray-500">{{ record.total_score }} 分</span>
+                                    <span v-if="record.signed_in" class="text-green-500"><i class="ri-check-line"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 设置页面 -->
+                <div v-if="currentPage === 'settings'" class="space-y-6">
+                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
+                        <i class="ri-arrow-left-line"></i> 返回
+                    </button>
+                    
+                    <h2 class="text-xl font-bold text-gray-800">设置</h2>
+                    
+                    <div class="bg-white rounded-xl p-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">每日学习目标</label>
+                            <select v-model="profile.daily_goal" @change="updateProfile" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none">
+                                <option :value="5">5 个单词</option>
+                                <option :value="10">10 个单词</option>
+                                <option :value="15">15 个单词</option>
+                                <option :value="20">20 个单词</option>
+                                <option :value="30">30 个单词</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-4">
+                        <h3 class="font-bold text-gray-800 mb-4">账户信息</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">用户名</span>
+                                <span class="font-medium">{{ currentUser.username }}</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">角色</span>
+                                <span class="font-medium">{{ currentUser.role === 'parent' ? '家长' : '孩子' }}</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-gray-600">总积分</span>
+                                <span class="font-medium text-blue-500">{{ profile.total_score }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <!-- 底部导航 -->
+            <nav v-if="currentPage !== 'learning'" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+                <div class="max-w-2xl mx-auto flex justify-around py-2">
+                    <button @click="goTo('home')" :class="currentPage === 'home' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
+                        <i class="ri-home-4-line text-xl"></i>
+                        <span class="text-xs mt-1">首页</span>
+                    </button>
+                    <button @click="goTo('library')" :class="currentPage === 'library' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
+                        <i class="ri-book-2-line text-xl"></i>
+                        <span class="text-xs mt-1">词库</span>
+                    </button>
+                    <button @click="goTo('wrongbook')" :class="currentPage === 'wrongbook' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
+                        <i class="ri-book-mark-line text-xl"></i>
+                        <span class="text-xs mt-1">错题</span>
+                    </button>
+                    <button @click="goTo('records')" :class="currentPage === 'records' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
+                        <i class="ri-bar-chart-box-line text-xl"></i>
+                        <span class="text-xs mt-1">记录</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Toast 提示 -->
+        <div v-if="toast.show" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-xl shadow-lg z-50">
+            {{ toast.message }}
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+        
+        const API_BASE = 'http://localhost:8000/api';
+        
+        createApp({
+            setup() {
+                const currentUser = ref(null);
+                const currentPage = ref('home');
+                const showRegister = ref(false);
+                
+                const loginForm = reactive({ username: '', password: '' });
+                const registerForm = reactive({ name: '', username: '', password: '', role: 'child' });
+                
+                const profile = reactive({ total_score: 0, daily_goal: 10, selected_library_ids: [] });
+                const todayData = reactive({ 
+                    new_words_learned: 0, review_completed: 0, daily_goal: 10, 
+                    remaining_new: 0, remaining_review: 0, signed_in: false, total_score: 0, 
+                    today_tasks: [], review_count: 0, new_count: 0 
+                });
+                const stats = reactive({ streak_days: 0, total_words: 0, total_sessions: 0, average_score: 0 });
+                const dailyRecords = ref([]);
+                const systemLibraries = ref([]);
+                
+                // 错题本相关
+                const wrongQuestions = ref([]);
+                const wrongStats = reactive({ total_wrong: 0, reviewing: 0, mastered: 0, due_today: 0 });
+                
+                const selectedLibraries = ref([]);
+                const learningTask = ref(null);  // 当前学习任务
+                
+                // 选择题相关
+                const quizData = ref(null);
+                const loadingQuiz = ref(false);
+                const selectedOption = ref(null);
+                const showResult = ref(false);
+                const quizResult = ref({});
+                const isRecording = ref(false);
+                const recognizedText = ref('');
+                
+                // 语音识别
+                let recognition = null;
+                
+                const toast = reactive({ show: false, message: '' });
+                
+                const showToast = (msg) => {
+                    toast.message = msg;
+                    toast.show = true;
+                    setTimeout(() => toast.show = false, 2000);
+                };
+                
+                const api = async (endpoint, options = {}) => {
+                    const token = localStorage.getItem('token');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+                    
+                    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.detail || '请求失败');
+                    }
+                    return res.json();
+                };
+                
+                const login = async () => {
+                    try {
+                        const formData = new URLSearchParams();
+                        formData.append('username', loginForm.username);
+                        formData.append('password', loginForm.password);
+                        
+                        const res = await fetch(`${API_BASE}/auth/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: formData
+                        });
+                        
+                        if (!res.ok) throw new Error('登录失败');
+                        const data = await res.json();
+                        
+                        localStorage.setItem('token', data.access_token);
+                        currentUser.value = data.user;
+                        await loadData();
+                        showToast('登录成功');
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const register = async () => {
+                    try {
+                        const data = await api('/auth/register', {
+                            method: 'POST',
+                            body: JSON.stringify(registerForm)
+                        });
+                        localStorage.setItem('token', data.access_token);
+                        currentUser.value = data.user;
+                        showRegister.value = false;
+                        await loadData();
+                        showToast('注册成功');
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const signOut = () => {
+                    localStorage.removeItem('token');
+                    currentUser.value = null;
+                    loginForm.username = '';
+                    loginForm.password = '';
+                };
+                
+                const loadData = async () => {
+                    try {
+                        const [profileData, todayDataRes, statsRes, recordsRes, libsRes, wrongStatsRes, wrongQuestionsRes] = await Promise.all([
+                            api('/records/profile'),
+                            api('/learning/today'),
+                            api('/records/stats'),
+                            api('/records/daily?days=7'),
+                            api('/libraries?lib_type=system'),
+                            api('/wrong-questions/stats'),
+                            api('/wrong-questions')
+                        ]);
+                        
+                        Object.assign(profile, profileData);
+                        Object.assign(todayData, todayDataRes);
+                        Object.assign(stats, statsRes);
+                        Object.assign(wrongStats, wrongStatsRes);
+                        dailyRecords.value = recordsRes;
+                        systemLibraries.value = libsRes;
+                        wrongQuestions.value = wrongQuestionsRes;
+                        selectedLibraries.value = profile.selected_library_ids || [];
+                        
+                        // 获取今日学习任务
+                        if (todayDataRes.today_tasks && todayDataRes.today_tasks.length > 0) {
+                            learningTask.value = todayDataRes.today_tasks[0];
+                        } else {
+                            learningTask.value = null;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+                
+                const goTo = async (page) => {
+                    currentPage.value = page;
+                    if (page === 'learning') {
+                        await loadTodayLearning();
+                    } else if (page === 'wrongbook') {
+                        await loadWrongQuestions();
+                    }
+                };
+                
+                const loadTodayLearning = async () => {
+                    const data = await api('/learning/today');
+                    Object.assign(todayData, data);
+                    if (data.today_tasks && data.today_tasks.length > 0) {
+                        learningTask.value = data.today_tasks[0];
+                        // 重置选择题状态
+                        quizData.value = null;
+                        selectedOption.value = null;
+                        showResult.value = false;
+                        // 加载选择题数据
+                        await loadQuiz();
+                    } else {
+                        learningTask.value = null;
+                        quizData.value = null;
+                    }
+                };
+                
+                // 加载选择题数据
+                const loadQuiz = async () => {
+                    if (!learningTask.value) return;
+                    loadingQuiz.value = true;
+                    try {
+                        const data = await api(`/learning/quiz-options/${learningTask.value.word_id}`);
+                        quizData.value = data;
+                        selectedOption.value = null;
+                        showResult.value = false;
+                        // 自动播放发音
+                        setTimeout(() => playPronunciation(data.word), 500);
+                    } catch (e) {
+                        console.error(e);
+                        showToast('加载题目失败');
+                    } finally {
+                        loadingQuiz.value = false;
+                    }
+                };
+                
+                // 播放标准发音
+                const playPronunciation = (word) => {
+                    // 使用有道词典TTS
+                    const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`);
+                    audio.play().catch(e => {
+                        // 降级：使用 Web Speech API
+                        const utterance = new SpeechSynthesisUtterance(word);
+                        utterance.lang = 'en-US';
+                        utterance.rate = 0.8;
+                        speechSynthesis.speak(utterance);
+                    });
+                };
+                
+                // 开始录音
+                const startRecording = () => {
+                    if (isRecording.value) {
+                        stopRecording();
+                        return;
+                    }
+                    
+                    // 检查浏览器支持
+                    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                        showToast('您的浏览器不支持语音识别');
+                        return;
+                    }
+                    
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    recognition.lang = 'en-US';
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        recognizedText.value = transcript;
+                        // 根据识别结果评分
+                        calculatePronunciationScore(transcript);
+                    };
+                    
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        isRecording.value = false;
+                        if (event.error !== 'no-speech') {
+                            showToast('语音识别失败，请重试');
+                        }
+                    };
+                    
+                    recognition.onend = () => {
+                        isRecording.value = false;
+                    };
+                    
+                    recognition.start();
+                    isRecording.value = true;
+                    showToast('请朗读英文单词...');
+                };
+                
+                const stopRecording = () => {
+                    if (recognition) {
+                        recognition.stop();
+                    }
+                    isRecording.value = false;
+                };
+                
+                // 计算发音得分
+                const calculatePronunciationScore = (spoken) => {
+                    if (!quizData.value || !spoken) return 50;
+                    const target = quizData.value.word.toLowerCase();
+                    const spoken_lower = spoken.toLowerCase().trim();
+                    
+                    if (spoken_lower === target) {
+                        pronunciationScore = 100;
+                    } else {
+                        // 计算相似度
+                        let matches = 0;
+                        for (let char of spoken_lower) {
+                            if (target.includes(char)) matches++;
+                        }
+                        const similarity = matches / Math.max(target.length, spoken_lower.length);
+                        pronunciationScore = Math.round(similarity * 100);
+                    }
+                };
+                
+                let pronunciationScore = 50;
+                
+                // 选择选项
+                const selectOption = (option) => {
+                    if (showResult.value) return;
+                    selectedOption.value = option;
+                };
+                
+                // 提交答案
+                const submitQuiz = async () => {
+                    if (!selectedOption.value || !quizData.value) return;
+                    
+                    try {
+                        const result = await api('/learning/submit-quiz', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                word_id: quizData.value.word_id,
+                                selected_meaning: selectedOption.value.text,
+                                pronunciation_score: pronunciationScore
+                            })
+                        });
+                        quizResult.value = result;
+                        showResult.value = true;
+                        
+                        if (result.added_to_wrong_book) {
+                            showToast('答错了，已加入错题本');
+                        }
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                // 下一题
+                const nextTask = async () => {
+                    // 从今日任务列表中移除当前任务
+                    const taskIndex = todayData.today_tasks.findIndex(t => t.word_id === learningTask.value?.word_id);
+                    if (taskIndex > -1) {
+                        todayData.today_tasks.splice(taskIndex, 1);
+                    }
+                    
+                    // 加载下一个任务
+                    if (todayData.today_tasks.length > 0) {
+                        learningTask.value = todayData.today_tasks[0];
+                        quizData.value = null;
+                        selectedOption.value = null;
+                        showResult.value = false;
+                        pronunciationScore = 50;
+                        recognizedText.value = '';
+                        await loadQuiz();
+                    } else {
+                        learningTask.value = null;
+                        quizData.value = null;
+                        // 刷新今日数据
+                        const data = await api('/learning/today');
+                        Object.assign(todayData, data);
+                    }
+                    
+                    // 更新统计数据
+                    const statsRes = await api('/records/stats');
+                    Object.assign(stats, statsRes);
+                };
+                
+                const loadWrongQuestions = async () => {
+                    const [statsRes, questionsRes] = await Promise.all([
+                        api('/wrong-questions/stats'),
+                        api('/wrong-questions')
+                    ]);
+                    Object.assign(wrongStats, statsRes);
+                    wrongQuestions.value = questionsRes;
+                };
+                
+                const submitLearning = async () => {
+                    if (!learningTask.value) return;
+                    
+                    try {
+                        const avgScore = Math.round((pronunciationScore.value + meaningScore.value) / 2);
+                        
+                        if (learningTask.value.type === 'review') {
+                            // 错题复习
+                            await api('/learning/review', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    wrong_question_id: learningTask.value.id,
+                                    score: avgScore
+                                })
+                            });
+                            showToast(avgScore >= 60 ? '复习正确！' : '还需努力！');
+                        } else {
+                            // 新词学习
+                            const result = await api('/learning/session', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    word_id: learningTask.value.word_id,
+                                    pronunciation_score: pronunciationScore.value,
+                                    meaning_score: meaningScore.value,
+                                    total_score: avgScore
+                                })
+                            });
+                            
+                            if (result.added_to_wrong_book) {
+                                showToast('学习完成，该词已加入错题本');
+                            } else {
+                                showToast('学习记录已保存');
+                            }
+                        }
+                        
+                        // 加载下一个任务
+                        await loadTodayLearning();
+                        await loadWrongQuestions();
+                        
+                        // 更新统计数据
+                        const statsRes = await api('/records/stats');
+                        Object.assign(stats, statsRes);
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const signIn = async () => {
+                    try {
+                        const data = await api('/learning/signin', { method: 'POST' });
+                        showToast(`签到成功，+${data.bonus_score}积分`);
+                        await loadData();
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const getLibrariesByGrade = (grade) => {
+                    return systemLibraries.value.filter(lib => lib.grade === grade);
+                };
+                
+                const toggleLibrary = (libId) => {
+                    const idx = selectedLibraries.value.indexOf(libId);
+                    if (idx >= 0) {
+                        selectedLibraries.value.splice(idx, 1);
+                    } else {
+                        selectedLibraries.value.push(libId);
+                    }
+                };
+                
+                const saveLibrarySelection = async () => {
+                    try {
+                        await api('/records/profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({ selected_library_ids: selectedLibraries.value })
+                        });
+                        showToast('词库选择已保存');
+                        goTo('home');
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const updateProfile = async () => {
+                    try {
+                        await api('/records/profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({ daily_goal: profile.daily_goal })
+                        });
+                        showToast('设置已保存');
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const resetWrongQuestion = async (id) => {
+                    try {
+                        await api(`/wrong-questions/reset/${id}`, { method: 'POST' });
+                        showToast('已重置复习进度');
+                        await loadWrongQuestions();
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                const deleteWrongQuestion = async (id) => {
+                    try {
+                        await api(`/wrong-questions/${id}`, { method: 'DELETE' });
+                        showToast('已从错题本删除');
+                        await loadWrongQuestions();
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                
+                onMounted(async () => {
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        try {
+                            currentUser.value = await api('/auth/me');
+                            await loadData();
+                        } catch (e) {
+                            localStorage.removeItem('token');
+                        }
+                    }
+                });
+                
+                return {
+                    currentUser, currentPage, showRegister,
+                    loginForm, registerForm,
+                    profile, todayData, stats, dailyRecords, systemLibraries,
+                    wrongQuestions, wrongStats,
+                    selectedLibraries, learningTask, showMeaning, pronunciationScore, meaningScore,
+                    toast,
+                    login, register, signOut, goTo, submitLearning, signIn,
+                    getLibrariesByGrade, toggleLibrary, saveLibrarySelection, updateProfile,
+                    resetWrongQuestion, deleteWrongQuestion
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
