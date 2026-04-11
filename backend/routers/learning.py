@@ -239,6 +239,12 @@ def submit_review_result(
     question.correct_count += 1 if is_correct else 0
     question.wrong_count += 1 if not is_correct else 0
     
+    # 更新熟悉度：答对+0.1，答错-0.1
+    if is_correct:
+        question.familiarity = round(question.familiarity + 0.1, 1)
+    else:
+        question.familiarity = round(max(question.familiarity - 0.1, 0.1), 1)
+    
     # 计算下次复习日期
     from routers.wrong_questions import calculate_next_review
     question.next_review_date = calculate_next_review(question.wrong_count, question.correct_count)
@@ -279,10 +285,11 @@ def submit_review_result(
         )
         db.add(daily_record)
     
-    # 奖励积分
+    # 奖励积分：答对+1，答错-0.5
+    score_change = 1 if is_correct else -0.5
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if profile:
-        profile.total_score += score
+        profile.total_score += score_change
     
     db.commit()
     
@@ -290,7 +297,10 @@ def submit_review_result(
         "message": "复习记录已保存",
         "is_correct": is_correct,
         "next_review_date": question.next_review_date,
-        "status": question.status
+        "status": question.status,
+        "score_change": score_change,
+        "total_score": profile.total_score if profile else 0,
+        "familiarity": question.familiarity
     }
 
 
@@ -432,19 +442,24 @@ def get_quiz_options(
 @router.post("/submit-quiz")
 async def submit_quiz_result(
     request: Request,
+    word_id: str = Query(None),
+    selected_meaning: str = Query(None),
+    pronunciation_score: int = Query(50),
+    task_type: str = Query("new"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """提交选择题结果"""
-    try:
-        body = await request.json()
-    except:
-        return {"detail": "Invalid JSON"}
-    
-    word_id = body.get("word_id")
-    selected_meaning = body.get("selected_meaning")
-    pronunciation_score = body.get("pronunciation_score", 50)
-    task_type = body.get("task_type", "new")  # "new" or "review"
+    # 兼容：优先从 query string 读取，也支持 JSON body
+    if not word_id or not selected_meaning:
+        try:
+            body = await request.json()
+            word_id = word_id or body.get("word_id")
+            selected_meaning = selected_meaning or body.get("selected_meaning")
+            pronunciation_score = body.get("pronunciation_score", pronunciation_score)
+            task_type = body.get("task_type", task_type)
+        except:
+            pass
     
     if not word_id or not selected_meaning:
         return {"detail": "Missing word_id or selected_meaning"}
@@ -500,6 +515,17 @@ async def submit_quiz_result(
             meaning=target_word["meaning"]
         )
     
+    # 更新错题本中的熟悉度（答对+0.1，答错-0.1）
+    wrong_entry = db.query(WrongQuestion).filter(
+        WrongQuestion.user_id == current_user.id,
+        WrongQuestion.word_id == word_id
+    ).first()
+    if wrong_entry:
+        if is_correct:
+            wrong_entry.familiarity = round(wrong_entry.familiarity + 0.1, 1)
+        else:
+            wrong_entry.familiarity = round(max(wrong_entry.familiarity - 0.1, 0.1), 1)
+    
     # 更新用户总分（含积分变动）
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if profile:
@@ -532,6 +558,7 @@ async def submit_quiz_result(
         "pronunciation_score": pronunciation_score,
         "total_score": total_score,
         "score_change": score_change,  # 本次积分变动
+        "user_total_score": profile.total_score if profile else 0,  # 用户总积分
         "correct_meaning": target_word["meaning"] if target_word else "",
         "added_to_wrong_book": not is_correct and target_word is not None
     }
