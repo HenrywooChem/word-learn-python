@@ -209,6 +209,13 @@ class ChangePhoneRequest(BaseModel):
     new_phone: Optional[str] = None  # 设为 None 表示解绑手机号
 
 
+class ResetPasswordRequest(BaseModel):
+    username: str  # 用户名
+    phone: Optional[str] = None  # 绑定的手机号
+    email: Optional[str] = None  # 绑定的邮箱
+    new_password: str  # 新密码
+
+
 class LearningSessionCreate(BaseModel):
     word_id: str
     pronunciation_score: int

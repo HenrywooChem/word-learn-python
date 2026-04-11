@@ -158,7 +158,8 @@
                         </div>
                         <button @click="login" class="btn btn-primary">登录</button>
                         <div class="text-center text-gray-500 text-sm">
-                            还没有账号？ <a href="#" @click.prevent="showRegister = true" class="link">立即注册</a>
+                            <a href="#" @click.prevent="showResetPassword = true" class="link" style="margin-right:12px;">忘记密码？</a>
+                            <a href="#" @click.prevent="showRegister = true" class="link">立即注册</a>
                         </div>
                     </div>
                 </div>
@@ -202,9 +203,41 @@
                     </div>
                 </div>
             </div>
+            <!-- 重置密码弹窗 -->
+            <div v-if="showResetPassword" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;">
+                <div class="card" style="width:100%;max-width:400px;max-height:90vh;overflow-y:auto;">
+                    <h2 class="text-xl font-bold mb-2">重置密码</h2>
+                    <p class="text-sm text-gray-500 mb-4">请输入用户名和绑定的手机号/邮箱来验证身份</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label>用户名 <span class="text-red-500">*</span></label>
+                            <input v-model="resetForm.username" type="text" class="input" placeholder="请输入用户名">
+                        </div>
+                        <div>
+                            <label>手机号</label>
+                            <input v-model="resetForm.phone" type="tel" class="input" placeholder="绑定的手机号（二选一）">
+                        </div>
+                        <div style="text-align:center;color:#9ca3af;font-size:13px;">或</div>
+                        <div>
+                            <label>邮箱</label>
+                            <input v-model="resetForm.email" type="email" class="input" placeholder="绑定的邮箱（二选一）">
+                        </div>
+                        <div>
+                            <label>新密码 <span class="text-red-500">*</span></label>
+                            <input v-model="resetForm.new_password" type="password" class="input" placeholder="请输入新密码（至少6位）">
+                        </div>
+                        <div>
+                            <label>确认新密码 <span class="text-red-500">*</span></label>
+                            <input v-model="resetForm.confirm_password" type="password" class="input" placeholder="再次输入新密码" @keyup.enter="resetPassword">
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="showResetPassword = false" class="btn btn-outline">取消</button>
+                            <button @click="resetPassword" class="btn btn-primary">重置密码</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <!-- 首页 -->
         <div v-if="currentUser && currentPage === 'home'" class="page active">
             <header class="header">
                 <div class="flex items-center justify-between">
@@ -729,6 +762,8 @@
                 const currentUser = ref(null);
                 const currentPage = ref('home');
                 const showRegister = ref(false);
+                const showResetPassword = ref(false);
+                const resetForm = reactive({ username: '', phone: '', email: '', new_password: '', confirm_password: '' });
                 const loginForm = reactive({ username: '', password: '' });
                 const registerForm = reactive({ name: '', username: '', phone: '', email: '', password: '', role: 'child' });
                 const profile = reactive({ total_score: 0, daily_goal: 10 });
@@ -815,6 +850,39 @@
                         showToast('注册成功');
                     } catch (e) { 
                         showToast(e.message || '注册失败'); 
+                    }
+                };
+                
+                const resetPassword = async () => {
+                    if (!resetForm.username.trim()) {
+                        showToast('请输入用户名'); return;
+                    }
+                    if (!resetForm.phone.trim() && !resetForm.email.trim()) {
+                        showToast('请输入手机号或邮箱'); return;
+                    }
+                    if (resetForm.new_password.length < 6) {
+                        showToast('新密码长度不能少于6位'); return;
+                    }
+                    if (resetForm.new_password !== resetForm.confirm_password) {
+                        showToast('两次输入的密码不一致'); return;
+                    }
+                    try {
+                        const body = {
+                            username: resetForm.username.trim(),
+                            new_password: resetForm.new_password
+                        };
+                        if (resetForm.phone.trim()) body.phone = resetForm.phone.trim();
+                        if (resetForm.email.trim()) body.email = resetForm.email.trim();
+                        await api('/auth/reset-password', { method: 'POST', body: JSON.stringify(body) });
+                        showResetPassword.value = false;
+                        resetForm.username = '';
+                        resetForm.phone = '';
+                        resetForm.email = '';
+                        resetForm.new_password = '';
+                        resetForm.confirm_password = '';
+                        showToast('密码重置成功，请使用新密码登录');
+                    } catch (e) {
+                        showToast(e.message || '重置失败');
                     }
                 };
                 
@@ -1463,14 +1531,15 @@
                 });
                 
                 return {
-                    currentUser, currentPage, showRegister, loginForm, registerForm,
+                    currentUser, currentPage, showRegister, showResetPassword, loginForm, registerForm,
+                    resetForm,
                     settingsForm,
                     profile, todayData, stats, systemLibraries, selectedLibraries, toast,
                     todayTasks, currentWordIndex, currentWord, currentOptions, selectedOption, showResult, isCorrect, lastScore, lastScoreChange,
                     comboCount, todayStr,
                     editingDailyGoal,
                     wrongQuestions, wrongbookTab, calendarGroups,
-                    login, register, signOut, goTo, signIn, toggleLibrary, saveLibrarySelection,
+                    login, register, resetPassword, signOut, goTo, signIn, toggleLibrary, saveLibrarySelection,
                     changeUsername, changePhone, changeEmail, changePassword,
                     startLearning, loadWord, playAudio, handleOptionClick, optionStyle, nextWord,
                     adjustDailyGoal, saveDailyGoal,

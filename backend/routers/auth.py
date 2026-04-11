@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import (
     User, UserProfile, UserCreate, UserResponse, LoginRequest, TokenResponse,
-    ChangePasswordRequest, ChangeUsernameRequest, ChangeEmailRequest, ChangePhoneRequest
+    ChangePasswordRequest, ChangeUsernameRequest, ChangeEmailRequest, ChangePhoneRequest,
+    ResetPasswordRequest
 )
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
@@ -317,3 +318,34 @@ def change_phone(
     db.commit()
     
     return {"message": "手机号修改成功", "user": _build_user_response(current_user)}
+
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """通过用户名+手机号/邮箱验证身份后重置密码（无需登录）"""
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码长度不能少于6位")
+    
+    if not req.phone and not req.email:
+        raise HTTPException(status_code=400, detail="请提供手机号或邮箱以验证身份")
+    
+    # 通过用户名查找用户
+    user = db.query(User).filter(User.username == req.username).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="用户名不存在")
+    
+    # 验证手机号（如果提供了）
+    if req.phone:
+        if not user.phone or user.phone != req.phone:
+            raise HTTPException(status_code=400, detail="手机号与账号不匹配")
+    
+    # 验证邮箱（如果提供了）
+    if req.email:
+        if not user.email or user.email != req.email:
+            raise HTTPException(status_code=400, detail="邮箱与账号不匹配")
+    
+    # 重置密码
+    user.password_hash = get_password_hash(req.new_password)
+    db.commit()
+    
+    return {"message": "密码重置成功，请使用新密码登录"}
