@@ -920,8 +920,27 @@
                             isCorrect.value = data.is_correct;
                             lastScore.value = data.total_score || 0;
                             showResult.value = true;
-                            // 只自动播放单词发音（用户已有点击手势）
-                            setTimeout(() => playTTS(currentWord.value && currentWord.value.word), 300);
+                            // 先播放单词发音，然后自动播放例句
+                            const wordToPlay = currentWord.value && currentWord.value.word;
+                            const exampleToPlay = currentWord.value && currentWord.value.example_sentence;
+                            // 用一个标志防止双重触发
+                            let examplePlayed = false;
+                            const doPlayExample = () => {
+                                if (!examplePlayed && exampleToPlay) {
+                                    examplePlayed = true;
+                                    playExampleSentence(exampleToPlay);
+                                }
+                            };
+                            playTTS(wordToPlay, () => {
+                                // 单词发音结束后，短暂停顿再播例句
+                                if (exampleToPlay) {
+                                    setTimeout(doPlayExample, 300);
+                                }
+                            });
+                            // 兜底：1秒后若例句还没播，强制触发（应对音频 ended 未回调的情况）
+                            if (exampleToPlay) {
+                                setTimeout(doPlayExample, 1000);
+                            }
                             // 连击计数
                             if (data.is_correct) {
                                 comboCount.value++;
