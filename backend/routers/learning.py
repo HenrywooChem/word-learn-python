@@ -435,6 +435,8 @@ def get_quiz_options(
         "word_id": word_id,
         "word": target_word.get("word", target_word.get("word")),
         "phonetic": target_word.get("phonetic", ""),
+        "meaning": target_word.get("meaning", ""),
+        "example_sentence": target_word.get("example_sentence", ""),
         "options": options
     }
 
