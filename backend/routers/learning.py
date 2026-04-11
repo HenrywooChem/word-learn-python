@@ -18,7 +18,7 @@ from models import LearningSessionCreate
 router = APIRouter(prefix="/api/learning", tags=["学习"])
 
 # 新词和错题复习的比例
-REVIEW_RATIO = 0.4  # 40% 复习错题，60% 新词
+REVIEW_RATIO = 0.2  # 20% 复习错题，80% 新词
 
 
 @router.get("/today")
@@ -299,7 +299,7 @@ def sign_in(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """每日签到"""
+    """每日签到 - 赠送1积分"""
     today = datetime.now().strftime("%Y-%m-%d")
     
     # 检查今日是否已签到
@@ -312,7 +312,7 @@ def sign_in(
         raise HTTPException(status_code=400, detail="今日已签到")
     
     # 签到奖励积分
-    bonus_score = 5
+    bonus_score = 1
     
     if daily_record:
         daily_record.signed_in = True
@@ -444,6 +444,7 @@ async def submit_quiz_result(
     word_id = body.get("word_id")
     selected_meaning = body.get("selected_meaning")
     pronunciation_score = body.get("pronunciation_score", 50)
+    task_type = body.get("task_type", "new")  # "new" or "review"
     
     if not word_id or not selected_meaning:
         return {"detail": "Missing word_id or selected_meaning"}
@@ -465,10 +466,17 @@ async def submit_quiz_result(
     
     # 检查答案是否正确
     is_correct = target_word and target_word["meaning"] == selected_meaning
-    meaning_score = 50 if is_correct else 0
     
-    # 计算总分：发音(50分) + 含义(50分)
+    # 计算分数
+    meaning_score = 50 if is_correct else 0
     total_score = pronunciation_score + meaning_score
+    
+    # 积分变动
+    score_change = 0
+    if is_correct:
+        score_change = 1  # 答对+1分
+    else:
+        score_change = -0.5  # 答错-0.5分
     
     # 创建学习记录
     session = LearningSession(
@@ -492,10 +500,10 @@ async def submit_quiz_result(
             meaning=target_word["meaning"]
         )
     
-    # 更新用户总分
+    # 更新用户总分（含积分变动）
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if profile:
-        profile.total_score += total_score
+        profile.total_score += score_change
     
     # 更新或创建每日记录
     daily_record = db.query(DailyRecord).filter(
@@ -505,13 +513,13 @@ async def submit_quiz_result(
     
     if daily_record:
         daily_record.words_learned += 1
-        daily_record.total_score += total_score
+        daily_record.total_score += score_change
     else:
         daily_record = DailyRecord(
             user_id=current_user.id,
             date=today,
             words_learned=1,
-            total_score=total_score,
+            total_score=score_change,
             signed_in=False
         )
         db.add(daily_record)
@@ -523,6 +531,7 @@ async def submit_quiz_result(
         "meaning_score": meaning_score,
         "pronunciation_score": pronunciation_score,
         "total_score": total_score,
+        "score_change": score_change,  # 本次积分变动
         "correct_meaning": target_word["meaning"] if target_word else "",
         "added_to_wrong_book": not is_correct and target_word is not None
     }

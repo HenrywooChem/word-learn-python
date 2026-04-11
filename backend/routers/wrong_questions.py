@@ -58,6 +58,7 @@ def get_wrong_questions(
             "word": q.word,
             "phonetic": q.phonetic,
             "meaning": q.meaning,
+            "familiarity": q.familiarity,
             "wrong_count": q.wrong_count,
             "correct_count": q.correct_count,
             "status": q.status,
@@ -90,6 +91,7 @@ def get_due_review_words(
             "word": q.word,
             "phonetic": q.phonetic,
             "meaning": q.meaning,
+            "familiarity": q.familiarity,
             "wrong_count": q.wrong_count,
             "correct_count": q.correct_count,
             "next_review_date": q.next_review_date
@@ -172,8 +174,12 @@ def submit_review(
     
     # 更新复习记录
     question.last_review_date = today
-    question.correct_count += 1 if is_correct else 0
-    question.wrong_count += 1 if not is_correct else 0
+    if is_correct:
+        question.correct_count += 1
+        question.familiarity = min(5.0, question.familiarity + 0.1)  # 答对+0.1，最高5.0
+    else:
+        question.wrong_count += 1
+        question.familiarity = max(0.1, question.familiarity - 0.1)  # 答错-0.1，最低0.1
     
     # 计算下次复习日期
     question.next_review_date = calculate_next_review(
@@ -197,17 +203,37 @@ def submit_review(
     )
     db.add(record)
     
-    # 更新今日复习完成数
-    daily_record = db.query(ReviewRecord).filter(
-        ReviewRecord.user_id == current_user.id,
-        ReviewRecord.review_date == today
-    ).count()
+    # 积分变动：答对+1，答错-0.5
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    score_change = 1 if is_correct else -0.5
+    if profile:
+        profile.total_score += score_change
+    
+    # 更新每日记录
+    daily_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+    
+    if daily_record:
+        daily_record.total_score += score_change
+    else:
+        daily_record = DailyRecord(
+            user_id=current_user.id,
+            date=today,
+            words_learned=0,
+            total_score=score_change,
+            signed_in=False
+        )
+        db.add(daily_record)
     
     db.commit()
     
     return {
         "message": "复习记录已保存",
         "is_correct": is_correct,
+        "score_change": score_change,
+        "familiarity": question.familiarity,
         "next_review_date": question.next_review_date,
         "status": question.status
     }
@@ -286,8 +312,9 @@ def add_to_wrong_book(
     ).first()
     
     if existing:
-        # 已存在，增加错误次数
+        # 已存在，增加错误次数，熟悉度-0.1
         existing.wrong_count += 1
+        existing.familiarity = max(0.1, existing.familiarity - 0.1)  # 最低0.1
         existing.last_review_date = today
         # 重新计算复习日期（缩短间隔）
         existing.next_review_date = calculate_next_review(
@@ -297,13 +324,14 @@ def add_to_wrong_book(
         existing.status = "reviewing"  # 重新开始复习
         existing.updated_at = today
     else:
-        # 新增错题
+        # 新增错题，初始熟悉度1.0
         question = WrongQuestion(
             user_id=user_id,
             word_id=word_id,
             word=word,
             phonetic=phonetic,
             meaning=meaning,
+            familiarity=1.0,  # 初始熟悉度
             wrong_count=1,
             correct_count=0,
             status="reviewing",

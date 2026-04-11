@@ -102,6 +102,7 @@ class WrongQuestion(Base):
     word: Mapped[str] = mapped_column(String)  # 单词
     phonetic: Mapped[str] = mapped_column(String)  # 发音
     meaning: Mapped[str] = mapped_column(String)  # 释义
+    familiarity: Mapped[float] = mapped_column(Integer, default=1.0)  # 熟悉度，初始1.0
     wrong_count: Mapped[int] = mapped_column(Integer, default=1)  # 错误次数
     correct_count: Mapped[int] = mapped_column(Integer, default=0)  # 正确次数
     status: Mapped[str] = mapped_column(String, default="reviewing")  # 'reviewing' 复习中, 'mastered' 已掌握
@@ -209,6 +210,7 @@ class WrongQuestionBase(BaseModel):
     word: str
     phonetic: str
     meaning: str
+    familiarity: float = 1.0
     wrong_count: int
     correct_count: int
     status: str

@@ -95,7 +95,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         # 创建用户配置文件
         profile = UserProfile(
             user_id=user_id,
-            total_score=0,
+            total_score=100,  # 注册赠送100积分
             daily_goal=10,
             selected_library_ids="[]"
         )

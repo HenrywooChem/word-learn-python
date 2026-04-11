@@ -6,11 +6,24 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models import WordLibrary, WordBase, WordLibraryBase, User, LearningSession
 from routers.auth import get_current_user
+
+
+class CreateLibraryRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    words: List[WordBase] = []
+
+
+class UpdateLibraryRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    words: Optional[List[WordBase]] = None
 
 router = APIRouter(prefix="/api/libraries", tags=["词库"])
 
@@ -140,9 +153,7 @@ def get_library(
 
 @router.post("", response_model=WordLibraryBase)
 def create_library(
-    name: str,
-    description: Optional[str] = None,
-    words: List[WordBase] = [],
+    body: CreateLibraryRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -151,10 +162,10 @@ def create_library(
     
     lib = WordLibrary(
         id=lib_id,
-        name=name,
+        name=body.name,
         type="custom",
-        description=description,
-        words=json.dumps([w.model_dump() for w in words], ensure_ascii=False),
+        description=body.description,
+        words=json.dumps([w.model_dump() for w in body.words], ensure_ascii=False),
         created_by=current_user.id,
         created_at=datetime.now().strftime("%Y-%m-%d")
     )
@@ -178,9 +189,7 @@ def create_library(
 @router.put("/{lib_id}", response_model=WordLibraryBase)
 def update_library(
     lib_id: str,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    words: Optional[List[WordBase]] = None,
+    body: UpdateLibraryRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -193,12 +202,12 @@ def update_library(
     if lib.type != "custom" or lib.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="无权限修改")
     
-    if name:
-        lib.name = name
-    if description is not None:
-        lib.description = description
-    if words is not None:
-        lib.words = json.dumps([w.model_dump() for w in words], ensure_ascii=False)
+    if body.name:
+        lib.name = body.name
+    if body.description is not None:
+        lib.description = body.description
+    if body.words is not None:
+        lib.words = json.dumps([w.model_dump() for w in body.words], ensure_ascii=False)
     
     db.commit()
     db.refresh(lib)

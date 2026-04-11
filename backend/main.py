@@ -2,6 +2,7 @@
 单词学习应用 - FastAPI 后端
 """
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -40,8 +41,12 @@ def startup_event():
     init_db()
 
 
-# 获取前端文件路径 - 修复版
-frontend_path = "/app/frontend/index.html"
+# 自动适配本地和 Docker 环境的前端路径
+# Docker 环境：/app/frontend/index.html
+# 本地环境：相对于 backend/ 上一级的 frontend/index.html
+_docker_path = Path("/app/frontend/index.html")
+_local_path = (Path(__file__).parent / ".." / "frontend" / "index.html").resolve()
+frontend_path = str(_docker_path if _docker_path.exists() else _local_path)
 
 @app.get("/")
 def root():
@@ -49,12 +54,12 @@ def root():
     return FileResponse(frontend_path)
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+
 @app.get("/{path:path}")
 async def serve_frontend(path: str):
     """支持前端路由"""
     return FileResponse(frontend_path)
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}

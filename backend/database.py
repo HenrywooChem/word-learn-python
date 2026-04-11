@@ -8,7 +8,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from models import Base, User, UserProfile, WordLibrary, LearningSession, DailyRecord
 
-DATABASE_URL = "sqlite:////app/data/wordlearn.db"
+# 自动适配本地和 Docker 环境的数据库路径
+# Docker 环境：/app/data/wordlearn.db
+# 本地环境：backend/data/wordlearn.db
+_docker_data_dir = Path("/app/data")
+_local_data_dir = Path(__file__).parent / "data"
+if _docker_data_dir.exists():
+    _data_dir = _docker_data_dir
+else:
+    _data_dir = _local_data_dir
+    _data_dir.mkdir(exist_ok=True)
+DATABASE_URL = f"sqlite:///{_data_dir / 'wordlearn.db'}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

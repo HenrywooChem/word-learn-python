@@ -287,7 +287,46 @@
                     </button>
                     
                     <h2 class="text-xl font-bold text-gray-800">选择词库</h2>
-                    
+
+                    <!-- 自定义词库区域 -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-medium text-gray-600">我的自定义词库</h3>
+                            <button @click="showCreateLibrary = true" class="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600">
+                                <i class="ri-add-line"></i> 新建词库
+                            </button>
+                        </div>
+                        <div v-for="lib in customLibraries" :key="lib.id" 
+                            @click="toggleLibrary(lib.id)"
+                            :class="selectedLibraries.includes(lib.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
+                            class="bg-white border-2 rounded-xl p-4 cursor-pointer transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-bold text-gray-800">{{ lib.name }} <span class="text-xs text-purple-500">[自定义]</span></h4>
+                                    <p class="text-sm text-gray-500">{{ lib.description }}</p>
+                                    <p class="text-xs text-gray-400 mt-1">{{ lib.words.length }} 个单词</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button @click.stop="editLibrary(lib)" class="p-1 text-gray-400 hover:text-blue-500">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button @click.stop="deleteLibrary(lib.id)" class="p-1 text-gray-400 hover:text-red-500">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                    <div :class="selectedLibraries.includes(lib.id) ? 'text-blue-500' : 'text-gray-300'">
+                                        <i :class="selectedLibraries.includes(lib.id) ? 'ri-checkbox-circle-fill' : 'ri-circle-line'" class="text-2xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="customLibraries.length === 0" class="text-center py-4 text-gray-400">
+                            暂无自定义词库，点击上方按钮创建
+                        </div>
+                    </div>
+
+                    <hr class="my-4 border-gray-200">
+
+                    <!-- 系统词库 -->
                     <div v-for="grade in ['小学', '初中', '高中']" :key="grade" class="space-y-3">
                         <h3 class="font-medium text-gray-600">{{ grade }}</h3>
                         <div v-for="lib in getLibrariesByGrade(grade)" :key="lib.id" 
@@ -310,6 +349,72 @@
                     <button @click="saveLibrarySelection" class="w-full py-4 bg-blue-500 text-white rounded-xl font-bold">
                         保存选择
                     </button>
+                </div>
+
+                <!-- 创建/编辑词库弹窗 -->
+                <div v-if="showCreateLibrary" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold text-gray-800">{{ editingLibrary ? '编辑词库' : '新建词库' }}</h2>
+                            <button @click="closeLibraryModal" class="p-1 text-gray-400 hover:text-gray-600">
+                                <i class="ri-close-line text-2xl"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- 词库名称 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">词库名称 <span class="text-red-500">*</span></label>
+                                <input v-model="libraryForm.name" type="text" maxlength="30"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                                    placeholder="例如：我的四年级单词">
+                            </div>
+
+                            <!-- 词库描述 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">描述（可选）</label>
+                                <input v-model="libraryForm.description" type="text" maxlength="50"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                                    placeholder="简短描述这个词库">
+                            </div>
+
+                            <!-- 单词输入区域 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    单词列表
+                                    <span class="text-xs text-gray-400 ml-2">每行一个，格式：<code class="bg-gray-100 px-1 rounded">单词 中文含义</code>（空格分隔）</span>
+                                </label>
+                                <textarea v-model="libraryForm.words_text" rows="10"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition font-mono text-sm"
+                                    placeholder="apple 苹果&#10;banana 香蕉&#10;cat 猫&#10;dog 狗"></textarea>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    已输入 <span :class="parsedWordCount > 0 ? 'text-blue-500 font-medium' : ''">{{ parsedWordCount }}</span> 个单词
+                                </p>
+                            </div>
+
+                            <!-- 预览解析结果 -->
+                            <div v-if="parsedWordCount > 0" class="bg-blue-50 rounded-xl p-3 max-h-32 overflow-y-auto">
+                                <p class="text-xs font-medium text-blue-600 mb-2">预览（前5条）：</p>
+                                <div v-for="(w, i) in previewWords" :key="i" class="text-xs text-blue-700 flex gap-3">
+                                    <span class="font-mono font-bold">{{ w.word }}</span>
+                                    <span class="text-gray-500">→</span>
+                                    <span>{{ w.meaning }}</span>
+                                </div>
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="flex gap-3 pt-2">
+                                <button @click="closeLibraryModal" class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition">
+                                    取消
+                                </button>
+                                <button @click="saveLibrary" :disabled="!libraryForm.name.trim()"
+                                    :class="libraryForm.name.trim() ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'"
+                                    class="flex-1 py-3 text-white rounded-xl font-medium transition">
+                                    {{ editingLibrary ? '保存修改' : '创建词库' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- 错题本页面 -->
@@ -495,7 +600,7 @@
     </div>
 
     <script>
-        const { createApp, ref, reactive, onMounted } = Vue;
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
         
         const API_BASE = 'http://localhost:8000/api';
         
@@ -517,6 +622,16 @@
                 const stats = reactive({ streak_days: 0, total_words: 0, total_sessions: 0, average_score: 0 });
                 const dailyRecords = ref([]);
                 const systemLibraries = ref([]);
+                const customLibraries = ref([]);
+                
+                // 自定义词库相关
+                const showCreateLibrary = ref(false);
+                const editingLibrary = ref(null);
+                const libraryForm = reactive({
+                    name: '',
+                    description: '',
+                    words_text: ''
+                });
                 
                 // 错题本相关
                 const wrongQuestions = ref([]);
@@ -536,6 +651,116 @@
                 
                 // 语音识别
                 let recognition = null;
+                
+                // ── 自定义词库辅助计算 ──────────────────────────────────────
+                const parsedWords = computed(() => {
+                    if (!libraryForm.words_text.trim()) return [];
+                    return libraryForm.words_text
+                        .split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        .map((line, idx) => {
+                            const parts = line.split(/\s+/);
+                            const word = parts[0] || '';
+                            const meaning = parts.slice(1).join(' ') || '';
+                            return { id: `custom-word-${idx}`, word, meaning };
+                        })
+                        .filter(w => w.word && w.meaning);
+                });
+
+                const parsedWordCount = computed(() => parsedWords.value.length);
+                const previewWords = computed(() => parsedWords.value.slice(0, 5));
+
+                // ── 自定义词库 CRUD ─────────────────────────────────────────
+                const loadCustomLibraries = async () => {
+                    try {
+                        const data = await api('/libraries?lib_type=custom');
+                        customLibraries.value = data;
+                    } catch (e) {
+                        console.error('加载自定义词库失败', e);
+                    }
+                };
+
+                const closeLibraryModal = () => {
+                    showCreateLibrary.value = false;
+                    editingLibrary.value = null;
+                    libraryForm.name = '';
+                    libraryForm.description = '';
+                    libraryForm.words_text = '';
+                };
+
+                const editLibrary = (lib) => {
+                    editingLibrary.value = lib;
+                    libraryForm.name = lib.name;
+                    libraryForm.description = lib.description || '';
+                    // 将词库单词还原成文本
+                    libraryForm.words_text = lib.words
+                        .map(w => `${w.word} ${w.meaning}`)
+                        .join('\n');
+                    showCreateLibrary.value = true;
+                };
+
+                const saveLibrary = async () => {
+                    if (!libraryForm.name.trim()) {
+                        showToast('请输入词库名称');
+                        return;
+                    }
+                    // 为每个单词生成唯一 id
+                    const words = parsedWords.value.map((w, idx) => ({
+                        id: editingLibrary.value
+                            ? `${editingLibrary.value.id}-w${idx}`
+                            : `cw-${Date.now()}-${idx}`,
+                        word: w.word,
+                        phonetic: '',
+                        meaning: w.meaning,
+                        example_sentence: ''
+                    }));
+
+                    try {
+                        if (editingLibrary.value) {
+                            // 更新
+                            await api(`/libraries/${editingLibrary.value.id}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({
+                                    name: libraryForm.name.trim(),
+                                    description: libraryForm.description.trim(),
+                                    words
+                                })
+                            });
+                            showToast('词库已更新');
+                        } else {
+                            // 创建
+                            await api('/libraries', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    name: libraryForm.name.trim(),
+                                    description: libraryForm.description.trim(),
+                                    words
+                                })
+                            });
+                            showToast('词库创建成功！');
+                        }
+                        closeLibraryModal();
+                        await loadCustomLibraries();
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+
+                const deleteLibrary = async (libId) => {
+                    if (!confirm('确定要删除这个词库吗？')) return;
+                    try {
+                        await api(`/libraries/${libId}`, { method: 'DELETE' });
+                        showToast('词库已删除');
+                        // 同时从已选列表中移除
+                        const idx = selectedLibraries.value.indexOf(libId);
+                        if (idx >= 0) selectedLibraries.value.splice(idx, 1);
+                        await loadCustomLibraries();
+                    } catch (e) {
+                        showToast(e.message);
+                    }
+                };
+                // ────────────────────────────────────────────────────────────
                 
                 const toast = reactive({ show: false, message: '' });
                 
@@ -626,6 +851,9 @@
                         wrongQuestions.value = wrongQuestionsRes;
                         selectedLibraries.value = profile.selected_library_ids || [];
                         
+                        // 加载自定义词库
+                        await loadCustomLibraries();
+                        
                         // 获取今日学习任务
                         if (todayDataRes.today_tasks && todayDataRes.today_tasks.length > 0) {
                             learningTask.value = todayDataRes.today_tasks[0];
@@ -643,6 +871,8 @@
                         await loadTodayLearning();
                     } else if (page === 'wrongbook') {
                         await loadWrongQuestions();
+                    } else if (page === 'library') {
+                        await loadCustomLibraries();
                     }
                 };
                 
@@ -969,6 +1199,11 @@
                     wrongQuestions, wrongStats,
                     selectedLibraries, learningTask, showMeaning, pronunciationScore, meaningScore,
                     toast,
+                    // 自定义词库
+                    customLibraries, showCreateLibrary, editingLibrary, libraryForm,
+                    parsedWordCount, previewWords,
+                    closeLibraryModal, editLibrary, saveLibrary, deleteLibrary,
+                    // 其他操作
                     login, register, signOut, goTo, submitLearning, signIn,
                     getLibrariesByGrade, toggleLibrary, saveLibrarySelection, updateProfile,
                     resetWrongQuestion, deleteWrongQuestion
