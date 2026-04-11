@@ -2,15 +2,23 @@
 单词学习应用 - FastAPI 后端
 """
 import os
-from pathlib import Path
-from fastapi import FastAPI
+import asyncio
+import tempfile
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from database import init_db
 from routers import auth, libraries, learning, records
 from routers.wrong_questions import router as wrong_questions_router
+
+# Edge TTS 导入
+try:
+    import edge_tts
+    EDGE_TTS_AVAILABLE = True
+except ImportError:
+    EDGE_TTS_AVAILABLE = False
 
 app = FastAPI(
     title="单词学习应用 API",
@@ -41,25 +49,68 @@ def startup_event():
     init_db()
 
 
-# 自动适配本地和 Docker 环境的前端路径
-# Docker 环境：/app/frontend/index.html
-# 本地环境：相对于 backend/ 上一级的 frontend/index.html
-_docker_path = Path("/app/frontend/index.html")
-_local_path = (Path(__file__).parent / ".." / "frontend" / "index.html").resolve()
-frontend_path = str(_docker_path if _docker_path.exists() else _local_path)
-
-@app.get("/")
-def root():
-    """返回前端页面"""
-    return FileResponse(frontend_path)
+# 获取前端文件路径
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+_local_frontend = os.path.join(_base_dir, "..", "frontend", "index.html")
+frontend_path = os.path.abspath(_local_frontend) if os.path.exists(_local_frontend) else "/app/frontend/index.html"
 
 
 @app.get("/health")
 def health_check():
+    """健康检查接口 - 必须在通配符路由之前定义"""
     return {"status": "healthy"}
+
+
+@app.get("/api/tts")
+async def tts_endpoint(text: str = Query(..., min_length=1, max_length=500)):
+    """TTS接口 - 使用Edge TTS生成音频"""
+    if not EDGE_TTS_AVAILABLE:
+        return JSONResponse({"error": "TTS not available"}, status_code=503)
+    
+    try:
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
+        
+        # 使用Edge TTS生成音频
+        communicate = edge_tts.Communicate(text, "en-US-JennyNeural")
+        await communicate.save(tmp_path)
+        
+        # 读取文件并返回
+        def iterfile():
+            with open(tmp_path, "rb") as f:
+                yield from f
+            # 清理临时文件
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": f"inline; filename=tts.mp3"}
+        )
+    except Exception as e:
+        # 清理临时文件
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/")
+def root():
+    """返回前端页面"""
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    return JSONResponse({"message": "单词学习应用 API 运行中", "docs": "/docs"})
 
 
 @app.get("/{path:path}")
 async def serve_frontend(path: str):
     """支持前端路由"""
-    return FileResponse(frontend_path)
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    return JSONResponse({"message": "单词学习应用 API 运行中", "docs": "/docs"})

@@ -4,765 +4,641 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>单词学习 - Python版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f9fafb; min-height: 100vh; }
+        .container { max-width: 480px; margin: 0 auto; padding: 20px; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
+        .btn-outline { background: white; border: 1px solid #e5e7eb; color: #374151; width: 100%; margin-bottom: 8px; }
+        .input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 12px; font-size: 16px; outline: none; }
+        .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-6 { margin-bottom: 24px; }
+        .mb-8 { margin-bottom: 32px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .p-4 { padding: 16px; }
+        .p-8 { padding: 32px; }
+        .space-y-2 > * + * { margin-top: 8px; }
+        .space-y-4 > * + * { margin-top: 16px; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .gap-4 { gap: 16px; }
+        .grid { display: grid; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .text-sm { font-size: 14px; }
+        .text-lg { font-size: 18px; }
+        .text-xl { font-size: 20px; }
+        .text-2xl { font-size: 24px; }
+        .text-3xl { font-size: 30px; }
+        .text-4xl { font-size: 36px; }
+        .text-5xl { font-size: 48px; }
+        .font-medium { font-weight: 500; }
+        .font-bold { font-weight: 700; }
+        .text-gray-400 { color: #9ca3af; }
+        .text-gray-500 { color: #6b7280; }
+        .text-gray-600 { color: #4b5563; }
+        .text-gray-700 { color: #374151; }
+        .text-gray-800 { color: #1f2937; }
+        .text-blue-500 { color: #3b82f6; }
+        .text-green-500 { color: #22c55e; }
+        .text-red-500 { color: #ef4444; }
+        .text-yellow-400 { color: #facc15; }
+        .bg-white { background: white; }
+        .bg-gray-50 { background: #f9fafb; }
+        .bg-blue-100 { background: #dbeafe; }
+        .bg-purple-100 { background: #f3e8ff; }
+        .bg-green-100 { background: #dcfce7; }
+        .bg-red-100 { background: #fee2e2; }
+        .bg-yellow-400 { background: #facc15; }
+        .bg-gradient-to-r { background: linear-gradient(to right, #3b82f6, #8b5cf6); }
+        .bg-gradient-to-br { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+        .rounded-xl { border-radius: 12px; }
+        .rounded-2xl { border-radius: 16px; }
+        .rounded-full { border-radius: 9999px; }
+        .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .sticky { position: sticky; }
+        .top-0 { top: 0; }
+        .w-full { width: 100%; }
+        .h-screen { height: 100vh; }
+        .w-20 { width: 80px; }
+        .h-20 { height: 80px; }
+        .fixed { position: fixed; }
+        .bottom-0 { bottom: 0; }
+        .left-0 { left: 0; }
+        .right-0 { right: 0; }
+        .z-40 { z-index: 40; }
+        .z-50 { z-index: 50; }
         .page { display: none; }
         .page.active { display: block; }
+        .icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .header { background: white; padding: 16px; position: sticky; top: 0; z-index: 40; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 8px 0; }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; padding: 8px 16px; color: #9ca3af; font-size: 12px; border: none; background: none; cursor: pointer; }
+        .nav-btn.active { color: #3b82f6; }
+        main { padding-bottom: 80px; }
+        label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 500; color: #374151; }
+        select.input { cursor: pointer; }
+        .link { color: #3b82f6; text-decoration: none; }
+        .lib-item { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .lib-item:hover { border-color: #3b82f6; background: #f0f9ff; }
+        .lib-item.selected { border-color: #3b82f6; background: #eff6ff; }
+        .disabled { opacity: 0.5; cursor: not-allowed; }
+        /* 进度环 */
+        .progress-ring { transform: rotate(-90deg); }
+        .progress-ring-bg { fill: none; stroke: rgba(255,255,255,0.3); stroke-width: 8; }
+        .progress-ring-fill { fill: none; stroke: white; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+        /* 题型标签 */
+        .quiz-type-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+        .badge-new { background: #dbeafe; color: #2563eb; }
+        .badge-review { background: #fef3c7; color: #d97706; }
+        /* 日历视图 */
+        .calendar-day { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; border-left: 4px solid #3b82f6; }
+        .calendar-day.overdue { border-left-color: #ef4444; }
+        .calendar-day.today { border-left-color: #22c55e; }
+        .calendar-word-count { background: #dbeafe; color: #2563eb; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        /* 连击特效 */
+        @keyframes combo-pop { 0%{transform:scale(0.5);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+        .combo-badge { animation: combo-pop 0.4s ease; display: inline-block; }
+        /* 例句卡片 */
+        @keyframes slide-up { 0%{transform:translateY(16px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+        .example-card { animation: slide-up 0.4s ease; background: linear-gradient(135deg, #eff6ff, #f5f3ff); border-radius: 14px; padding: 16px; margin-top: 16px; border-left: 4px solid #3b82f6; }
+        .example-card.wrong { background: linear-gradient(135deg, #fff7ed, #fef2f2); border-left-color: #f97316; }
+        .example-highlight { color: #2563eb; font-weight: 700; }
+        .example-highlight.wrong { color: #dc2626; }
+        /* 错题本优化 */
+        .wrong-item { background: white; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-bottom: 10px; transition: all 0.2s; }
+        .wrong-item:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+        .wrong-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .wrong-count-badge { padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-danger { background: #fee2e2; color: #dc2626; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-ok { background: #dcfce7; color: #16a34a; }
+        .example-mini { font-size: 12px; color: #6b7280; margin-top: 6px; line-height: 1.5; border-top: 1px solid #f3f4f6; padding-top: 6px; }
+
+        /* 词族记忆 */
+        .group-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1.5px solid #e5e7eb; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 14px; }
+        .group-card:hover { border-color: #3b82f6; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.12); }
+        .group-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .group-tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-right: 3px; margin-bottom: 3px; }
+        .wg-word-card { background: white; border-radius: 14px; padding: 18px; margin-bottom: 10px; border: 1.5px solid #e5e7eb; animation: wg-fade-in 0.25s ease both; }
+        .wg-word-card:hover { border-color: #93c5fd; }
+        .wg-root-pill { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #fef9c3; color: #854d0e; letter-spacing: 0.5px; margin-right: 4px; }
+        @keyframes wg-fade-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
     </style>
-    
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <div id="app" class="min-h-screen">
-        <!-- 登录/注册页面 -->
+<body>
+    <div id="app">
+        <!-- 登录页 -->
         <div v-if="!currentUser" class="page active">
-            <div class="min-h-screen flex items-center justify-center p-4">
-                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-                    <div class="text-center mb-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <i class="ri-book-open-line text-white text-3xl"></i>
-                        </div>
+            <div class="h-screen flex items-center justify-center p-4">
+                <div class="card" style="width:100%;max-width:400px;">
+                    <div class="text-center mb-4">
+                        <div class="icon bg-gradient-to-br text-white" style="width:64px;height:64px;margin:0 auto 16px;font-size:32px;">📚</div>
                         <h1 class="text-2xl font-bold text-gray-800">单词学习</h1>
                         <p class="text-gray-500 mt-2">Python 版</p>
                     </div>
-                    
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
-                            <input v-model="loginForm.username" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="请输入用户名">
+                            <label>用户名</label>
+                            <input v-model="loginForm.username" type="text" class="input" placeholder="请输入用户名">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
-                            <input v-model="loginForm.password" type="password" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="请输入密码" @keyup.enter="login">
+                            <label>密码</label>
+                            <input v-model="loginForm.password" type="password" class="input" placeholder="请输入密码" @keyup.enter="login">
                         </div>
-                        <button @click="login" class="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition">
-                            登录
-                        </button>
+                        <button @click="login" class="btn btn-primary">登录</button>
                         <div class="text-center text-gray-500 text-sm">
-                            还没有账号？ <a href="#" @click.prevent="showRegister = true" class="text-blue-500">立即注册</a>
+                            还没有账号？ <a href="#" @click.prevent="showRegister = true" class="link">立即注册</a>
                         </div>
                     </div>
                 </div>
             </div>
-            
             <!-- 注册弹窗 -->
-            <div v-if="showRegister" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div v-if="showRegister" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;">
+                <div class="card" style="width:100%;max-width:400px;">
                     <h2 class="text-xl font-bold mb-4">注册新账号</h2>
                     <div class="space-y-3">
-                        <input v-model="registerForm.name" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="姓名">
-                        <input v-model="registerForm.username" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="用户名">
-                        <input v-model="registerForm.password" type="password" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none" placeholder="密码">
-                        <select v-model="registerForm.role" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none">
+                        <input v-model="registerForm.name" type="text" class="input" placeholder="姓名">
+                        <input v-model="registerForm.username" type="text" class="input" placeholder="用户名">
+                        <input v-model="registerForm.password" type="password" class="input" placeholder="密码">
+                        <select v-model="registerForm.role" class="input">
                             <option value="child">孩子</option>
                             <option value="parent">家长</option>
                         </select>
-                        <div class="flex gap-3">
-                            <button @click="showRegister = false" class="flex-1 py-3 border border-gray-200 rounded-xl">取消</button>
-                            <button @click="register" class="flex-1 py-3 bg-blue-500 text-white rounded-xl">注册</button>
+                        <div class="flex gap-2">
+                            <button @click="showRegister = false" class="btn btn-outline">取消</button>
+                            <button @click="register" class="btn btn-primary">注册</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- 主应用 -->
-        <div v-else class="page active">
-            <!-- 顶部导航 -->
-            <header class="bg-white shadow-sm sticky top-0 z-40">
-                <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+        <!-- 首页 -->
+        <div v-if="currentUser && currentPage === 'home'" class="page active">
+            <header class="header">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                            <i class="ri-book-open-line text-white"></i>
-                        </div>
+                        <div class="icon bg-gradient-to-br text-white">📚</div>
                         <div>
-                            <h1 class="font-bold text-gray-800">{{ currentUser.name }}</h1>
-                            <p class="text-xs text-gray-500">积分: {{ profile.total_score }}</p>
+                            <h1 class="font-bold">{{ currentUser.name }}</h1>
+                            <p class="text-sm text-gray-500">积分: {{ profile.total_score }}</p>
                         </div>
                     </div>
-                    <button @click="signOut" class="p-2 text-gray-500 hover:text-gray-700">
-                        <i class="ri-logout-box-line text-xl"></i>
-                    </button>
+                    <button @click="signOut" style="background:none;border:none;font-size:24px;cursor:pointer;">🚪</button>
                 </div>
             </header>
-            
-            <!-- 页面内容 -->
-            <main class="max-w-2xl mx-auto p-4 pb-20">
-                <!-- 首页 -->
-                <div v-if="currentPage === 'home'" class="space-y-6">
-                    <!-- 今日进度 -->
-                    <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-6 text-white">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h2 class="text-lg font-medium opacity-90">今日学习</h2>
-                                <p class="text-4xl font-bold mt-1">{{ todayData.new_words_learned + todayData.review_completed }} / {{ todayData.daily_goal }}</p>
-                                <p class="text-sm opacity-80 mt-1">
-                                    新词: {{ todayData.new_words_learned }} | 复习: {{ todayData.review_completed }}/{{ todayData.review_count }}
-                                </p>
-                            </div>
-                            <div class="w-16 h-16 relative">
-                                <svg class="w-16 h-16 transform -rotate-90">
-                                    <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.2)" stroke-width="4" fill="none"/>
-                                    <circle cx="32" cy="32" r="28" stroke="white" stroke-width="4" fill="none" 
-                                        :stroke-dasharray="175.9" 
-                                        :stroke-dashoffset="175.9 - (175.9 * Math.min((todayData.new_words_learned + todayData.review_completed) / todayData.daily_goal, 1))"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="flex gap-4 text-sm">
-                            <div class="flex items-center gap-1">
-                                <i class="ri-check-double-line"></i>
-                                <span>连续{{ stats.streak_days }}天</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <i class="ri-star-smile-line"></i>
-                                <span>今日积分: {{ todayData.total_score }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 错题本快捷入口 -->
-                    <div v-if="wrongStats.due_today > 0" @click="goTo('wrongbook')" class="bg-red-50 border border-red-200 rounded-2xl p-4 cursor-pointer hover:bg-red-100 transition">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                                    <i class="ri-error-warning-line text-red-500"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-red-700">错题复习</h3>
-                                    <p class="text-sm text-red-600">今日有 {{ wrongStats.due_today }} 道错题待复习</p>
-                                </div>
-                            </div>
-                            <i class="ri-arrow-right-line text-red-400"></i>
-                        </div>
-                    </div>
-                    
-                    <!-- 快捷操作 -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <button @click="goTo('learning')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
-                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
-                                <i class="ri-book-read-line text-blue-500 text-xl"></i>
-                            </div>
-                            <h3 class="font-bold text-gray-800">开始学习</h3>
-                            <p class="text-sm text-gray-500 mt-1">新词 {{ todayData.remaining_new }} / 复习 {{ todayData.remaining_review }}</p>
-                        </button>
-                        
-                        <button @click="goTo('library')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
-                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
-                                <i class="ri-library-line text-purple-500 text-xl"></i>
-                            </div>
-                            <h3 class="font-bold text-gray-800">词库管理</h3>
-                            <p class="text-sm text-gray-500 mt-1">选择学习范围</p>
-                        </button>
-                        
-                        <button @click="goTo('wrongbook')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
-                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-3">
-                                <i class="ri-book-mark-line text-red-500 text-xl"></i>
-                            </div>
-                            <h3 class="font-bold text-gray-800">错题本</h3>
-                            <p class="text-sm text-gray-500 mt-1">{{ wrongStats.reviewing }} 待复习</p>
-                        </button>
-                        
-                        <button @click="goTo('records')" class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition text-left">
-                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3">
-                                <i class="ri-bar-chart-line text-green-500 text-xl"></i>
-                            </div>
-                            <h3 class="font-bold text-gray-800">学习记录</h3>
-                            <p class="text-sm text-gray-500 mt-1">查看历史数据</p>
-                        </button>
-                    </div>
-                    
-                    <!-- 签到按钮 -->
-                    <button v-if="!todayData.signed_in" @click="signIn" class="w-full py-4 bg-yellow-400 text-gray-800 rounded-2xl font-bold hover:bg-yellow-500 transition flex items-center justify-center gap-2">
-                        <i class="ri-gift-line"></i>
-                        签到领积分
-                    </button>
-                    <div v-else class="text-center py-4 text-green-500">
-                        <i class="ri-checkbox-circle-fill"></i> 今日已签到
-                    </div>
-                </div>
-                
-                <!-- 学习页面 -->
-                <div v-if="currentPage === 'learning'" class="space-y-6">
-                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
-                        <i class="ri-arrow-left-line"></i> 返回
-                    </button>
-                    
-                    <!-- 任务类型提示 -->
-                    <div v-if="learningTask" class="flex items-center justify-center gap-2">
-                        <span v-if="learningTask.type === 'review'" class="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm">
-                            <i class="ri-refresh-line"></i> 错题复习
-                        </span>
-                        <span v-else class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm">
-                            <i class="ri-add-line"></i> 新词学习
-                        </span>
-                    </div>
-                    
-                    <div v-if="!learningTask" class="text-center py-12">
-                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="ri-check-line text-green-500 text-4xl"></i>
-                        </div>
-                        <h2 class="text-xl font-bold text-gray-800">今日任务完成！</h2>
-                        <p class="text-gray-500 mt-2">太棒了，明天继续加油！</p>
-                    </div>
-                    
-                    <!-- 加载选择题中 -->
-                    <div v-else-if="loadingQuiz" class="bg-white rounded-2xl shadow-sm p-8 text-center">
-                        <div class="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <p class="text-gray-500">加载题目中...</p>
-                    </div>
-                    
-                    <!-- 选择题界面 -->
-                    <div v-else-if="quizData && !showResult" class="bg-white rounded-2xl shadow-sm p-8">
-                        <!-- 单词显示 -->
-                        <div class="text-center mb-8">
-                            <p class="text-gray-500 text-sm">请跟读单词</p>
-                            <h2 class="text-5xl font-bold text-gray-800 mt-2">{{ quizData.word }}</h2>
-                            <p class="text-gray-400 mt-2">{{ quizData.phonetic }}</p>
-                            
-                            <!-- 播放发音按钮 -->
-                            <button @click="playPronunciation(quizData.word)" class="mt-4 px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition flex items-center gap-2 mx-auto">
-                                <i class="ri-volume-up-line text-xl"></i>
-                                播放标准发音
-                            </button>
-                        </div>
-                        
-                        <!-- 跟读按钮 -->
-                        <div class="text-center mb-8">
-                            <button @click="startRecording" 
-                                :class="isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500'"
-                                class="px-8 py-4 text-white rounded-xl font-bold hover:opacity-90 transition flex items-center gap-2 mx-auto">
-                                <i :class="isRecording ? 'ri-stop-circle-line' : 'ri-mic-line'" class="text-2xl"></i>
-                                {{ isRecording ? '停止跟读' : '点击跟读' }}
-                            </button>
-                            <p v-if="recognizedText" class="mt-2 text-gray-600">识别结果: {{ recognizedText }}</p>
-                        </div>
-                        
-                        <!-- 4选1选择题 -->
-                        <div class="mb-6">
-                            <p class="text-gray-600 text-center mb-4 font-medium">请选择正确的中文意思：</p>
-                            <div class="grid grid-cols-1 gap-3">
-                                <button v-for="(option, idx) in quizData.options" :key="idx"
-                                    @click="selectOption(option)"
-                                    :class="selectedOption === option ? (option.correct ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500') : 'bg-gray-50 border-gray-200 hover:bg-blue-50 hover:border-blue-300'"
-                                    class="p-4 border-2 rounded-xl text-left font-medium transition">
-                                    {{ option.text }}
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- 提交按钮 -->
-                        <button @click="submitQuiz" :disabled="!selectedOption"
-                            class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-                            提交答案
-                        </button>
-                    </div>
-                    
-                    <!-- 结果展示 -->
-                    <div v-if="showResult" class="bg-white rounded-2xl shadow-sm p-8 text-center">
-                        <div :class="quizResult.is_correct ? 'bg-green-100' : 'bg-red-100'" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i :class="quizResult.is_correct ? 'ri-checkbox-circle-fill text-green-500' : 'ri-close-circle-fill text-red-500'" class="text-4xl"></i>
-                        </div>
-                        
-                        <h3 class="text-2xl font-bold mb-4">{{ quizResult.is_correct ? '回答正确！' : '回答错误' }}</h3>
-                        
-                        <div class="bg-gray-50 rounded-xl p-4 mb-6">
-                            <p class="text-gray-600">得分：{{ quizResult.total_score }}分</p>
-                            <p class="text-sm text-gray-500 mt-1">发音得分：{{ quizResult.pronunciation_score }} + 含义得分：{{ quizResult.meaning_score }}</p>
-                            <p v-if="!quizResult.is_correct" class="text-sm text-red-500 mt-2">正确答案：{{ quizResult.correct_meaning }}</p>
-                        </div>
-                        
-                        <button @click="nextTask" class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold">
-                            下一题
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 词库页面 -->
-                <div v-if="currentPage === 'library'" class="space-y-6">
-                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
-                        <i class="ri-arrow-left-line"></i> 返回
-                    </button>
-                    
-                    <h2 class="text-xl font-bold text-gray-800">选择词库</h2>
-
-                    <!-- 自定义词库区域 -->
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h3 class="font-medium text-gray-600">我的自定义词库</h3>
-                            <button @click="showCreateLibrary = true" class="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600">
-                                <i class="ri-add-line"></i> 新建词库
-                            </button>
-                        </div>
-                        <div v-for="lib in customLibraries" :key="lib.id" 
-                            @click="toggleLibrary(lib.id)"
-                            :class="selectedLibraries.includes(lib.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
-                            class="bg-white border-2 rounded-xl p-4 cursor-pointer transition">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-bold text-gray-800">{{ lib.name }} <span class="text-xs text-purple-500">[自定义]</span></h4>
-                                    <p class="text-sm text-gray-500">{{ lib.description }}</p>
-                                    <p class="text-xs text-gray-400 mt-1">{{ lib.words.length }} 个单词</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button @click.stop="editLibrary(lib)" class="p-1 text-gray-400 hover:text-blue-500">
-                                        <i class="ri-edit-line"></i>
-                                    </button>
-                                    <button @click.stop="deleteLibrary(lib.id)" class="p-1 text-gray-400 hover:text-red-500">
-                                        <i class="ri-delete-bin-line"></i>
-                                    </button>
-                                    <div :class="selectedLibraries.includes(lib.id) ? 'text-blue-500' : 'text-gray-300'">
-                                        <i :class="selectedLibraries.includes(lib.id) ? 'ri-checkbox-circle-fill' : 'ri-circle-line'" class="text-2xl"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-if="customLibraries.length === 0" class="text-center py-4 text-gray-400">
-                            暂无自定义词库，点击上方按钮创建
-                        </div>
-                    </div>
-
-                    <hr class="my-4 border-gray-200">
-
-                    <!-- 系统词库 -->
-                    <div v-for="grade in ['小学', '初中', '高中']" :key="grade" class="space-y-3">
-                        <h3 class="font-medium text-gray-600">{{ grade }}</h3>
-                        <div v-for="lib in getLibrariesByGrade(grade)" :key="lib.id" 
-                            @click="toggleLibrary(lib.id)"
-                            :class="selectedLibraries.includes(lib.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'"
-                            class="bg-white border-2 rounded-xl p-4 cursor-pointer transition">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-bold text-gray-800">{{ lib.name }}</h4>
-                                    <p class="text-sm text-gray-500">{{ lib.description }}</p>
-                                    <p class="text-xs text-gray-400 mt-1">{{ lib.words.length }} 个单词</p>
-                                </div>
-                                <div :class="selectedLibraries.includes(lib.id) ? 'text-blue-500' : 'text-gray-300'">
-                                    <i :class="selectedLibraries.includes(lib.id) ? 'ri-checkbox-circle-fill' : 'ri-circle-line'" class="text-2xl"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button @click="saveLibrarySelection" class="w-full py-4 bg-blue-500 text-white rounded-xl font-bold">
-                        保存选择
-                    </button>
-                </div>
-
-                <!-- 创建/编辑词库弹窗 -->
-                <div v-if="showCreateLibrary" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                        <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-xl font-bold text-gray-800">{{ editingLibrary ? '编辑词库' : '新建词库' }}</h2>
-                            <button @click="closeLibraryModal" class="p-1 text-gray-400 hover:text-gray-600">
-                                <i class="ri-close-line text-2xl"></i>
-                            </button>
-                        </div>
-
-                        <div class="space-y-4">
-                            <!-- 词库名称 -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">词库名称 <span class="text-red-500">*</span></label>
-                                <input v-model="libraryForm.name" type="text" maxlength="30"
-                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                                    placeholder="例如：我的四年级单词">
-                            </div>
-
-                            <!-- 词库描述 -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">描述（可选）</label>
-                                <input v-model="libraryForm.description" type="text" maxlength="50"
-                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
-                                    placeholder="简短描述这个词库">
-                            </div>
-
-                            <!-- 单词输入区域 -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    单词列表
-                                    <span class="text-xs text-gray-400 ml-2">每行一个，格式：<code class="bg-gray-100 px-1 rounded">单词 中文含义</code>（空格分隔）</span>
-                                </label>
-                                <textarea v-model="libraryForm.words_text" rows="10"
-                                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition font-mono text-sm"
-                                    placeholder="apple 苹果&#10;banana 香蕉&#10;cat 猫&#10;dog 狗"></textarea>
-                                <p class="text-xs text-gray-400 mt-1">
-                                    已输入 <span :class="parsedWordCount > 0 ? 'text-blue-500 font-medium' : ''">{{ parsedWordCount }}</span> 个单词
-                                </p>
-                            </div>
-
-                            <!-- 预览解析结果 -->
-                            <div v-if="parsedWordCount > 0" class="bg-blue-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                <p class="text-xs font-medium text-blue-600 mb-2">预览（前5条）：</p>
-                                <div v-for="(w, i) in previewWords" :key="i" class="text-xs text-blue-700 flex gap-3">
-                                    <span class="font-mono font-bold">{{ w.word }}</span>
-                                    <span class="text-gray-500">→</span>
-                                    <span>{{ w.meaning }}</span>
-                                </div>
-                            </div>
-
-                            <!-- 操作按钮 -->
-                            <div class="flex gap-3 pt-2">
-                                <button @click="closeLibraryModal" class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition">
-                                    取消
-                                </button>
-                                <button @click="saveLibrary" :disabled="!libraryForm.name.trim()"
-                                    :class="libraryForm.name.trim() ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'"
-                                    class="flex-1 py-3 text-white rounded-xl font-medium transition">
-                                    {{ editingLibrary ? '保存修改' : '创建词库' }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 错题本页面 -->
-                <div v-if="currentPage === 'wrongbook'" class="space-y-6">
-                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
-                        <i class="ri-arrow-left-line"></i> 返回
-                    </button>
-                    
-                    <h2 class="text-xl font-bold text-gray-800">错题本</h2>
-                    
-                    <!-- 统计 -->
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-2xl font-bold text-red-500">{{ wrongStats.total_wrong }}</p>
-                            <p class="text-sm text-gray-500">总错题</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-2xl font-bold text-orange-500">{{ wrongStats.reviewing }}</p>
-                            <p class="text-sm text-gray-500">待复习</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-2xl font-bold text-green-500">{{ wrongStats.mastered }}</p>
-                            <p class="text-sm text-gray-500">已掌握</p>
-                        </div>
-                    </div>
-                    
-                    <!-- 今日待复习 -->
-                    <div v-if="wrongStats.due_today > 0" class="bg-red-50 border border-red-200 rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-bold text-red-700">今日待复习 ({{ wrongStats.due_today }})</h3>
-                            <button @click="goTo('learning')" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm">
-                                开始复习
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- 错题列表 -->
-                    <div class="space-y-3">
-                        <h3 class="font-medium text-gray-600">错题列表</h3>
-                        <div v-for="q in wrongQuestions" :key="q.id" class="bg-white rounded-xl p-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-bold text-gray-800">{{ q.word }}</h4>
-                                    <p class="text-sm text-gray-500">{{ q.phonetic }}</p>
-                                    <p class="text-sm text-gray-600 mt-1">{{ q.meaning }}</p>
-                                </div>
-                                <div class="text-right text-sm">
-                                    <p class="text-red-500">错 {{ q.wrong_count }} 次</p>
-                                    <p class="text-green-500">对 {{ q.correct_count }} 次</p>
-                                    <p class="text-gray-400 mt-1">下次: {{ q.next_review_date }}</p>
-                                </div>
-                            </div>
-                            <div class="flex gap-2 mt-3">
-                                <button @click="resetWrongQuestion(q.id)" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
-                                    重置进度
-                                </button>
-                                <button @click="deleteWrongQuestion(q.id)" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
-                                    删除
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div v-if="wrongQuestions.length === 0" class="text-center py-8 text-gray-500">
-                            <i class="ri-book-mark-line text-4xl mb-2"></i>
-                            <p>暂无错题</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 记录页面 -->
-                <div v-if="currentPage === 'records'" class="space-y-6">
-                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
-                        <i class="ri-arrow-left-line"></i> 返回
-                    </button>
-                    
-                    <h2 class="text-xl font-bold text-gray-800">学习记录</h2>
-                    
-                    <!-- 统计卡片 -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-3xl font-bold text-blue-500">{{ stats.streak_days }}</p>
-                            <p class="text-sm text-gray-500">连续学习天数</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-3xl font-bold text-purple-500">{{ stats.total_words }}</p>
-                            <p class="text-sm text-gray-500">已学单词</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-3xl font-bold text-green-500">{{ stats.total_sessions }}</p>
-                            <p class="text-sm text-gray-500">学习次数</p>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 text-center">
-                            <p class="text-3xl font-bold text-orange-500">{{ stats.average_score }}</p>
-                            <p class="text-sm text-gray-500">平均分数</p>
-                        </div>
-                    </div>
-                    
-                    <!-- 每日记录 -->
-                    <div class="bg-white rounded-xl p-4">
-                        <h3 class="font-bold text-gray-800 mb-4">最近7天</h3>
-                        <div class="space-y-3">
-                            <div v-for="record in dailyRecords" :key="record.date" class="flex items-center justify-between py-2 border-b border-gray-100">
-                                <span class="text-gray-600">{{ record.date }}</span>
-                                <div class="flex items-center gap-4">
-                                    <span class="text-sm text-gray-500">{{ record.words_learned }} 词</span>
-                                    <span v-if="record.review_completed" class="text-sm text-orange-500">{{ record.review_completed }} 复习</span>
-                                    <span class="text-sm text-gray-500">{{ record.total_score }} 分</span>
-                                    <span v-if="record.signed_in" class="text-green-500"><i class="ri-check-line"></i></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 设置页面 -->
-                <div v-if="currentPage === 'settings'" class="space-y-6">
-                    <button @click="goTo('home')" class="flex items-center gap-2 text-gray-600">
-                        <i class="ri-arrow-left-line"></i> 返回
-                    </button>
-                    
-                    <h2 class="text-xl font-bold text-gray-800">设置</h2>
-                    
-                    <div class="bg-white rounded-xl p-4 space-y-4">
+            <main class="container">
+                <div class="card bg-gradient-to-br text-white" style="margin-top:16px;padding:24px;">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">每日学习目标</label>
-                            <select v-model="profile.daily_goal" @change="updateProfile" class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none">
-                                <option :value="5">5 个单词</option>
-                                <option :value="10">10 个单词</option>
-                                <option :value="15">15 个单词</option>
-                                <option :value="20">20 个单词</option>
-                                <option :value="30">30 个单词</option>
-                            </select>
+                            <h2 class="text-lg" style="opacity:0.9;">今日学习</h2>
+                            <p class="text-4xl font-bold mt-2">{{ todayData.new_words_learned + todayData.review_completed }} <span class="text-xl" style="opacity:0.8;">/ {{ todayData.daily_goal }}</span></p>
+                            <p class="text-sm mt-2" style="opacity:0.8;">新词: {{ todayData.new_words_learned }} | 复习: {{ todayData.review_completed }}</p>
                         </div>
+                        <svg width="80" height="80" viewBox="0 0 80 80">
+                            <circle class="progress-ring-bg" cx="40" cy="40" r="32"/>
+                            <circle class="progress-ring-fill" cx="40" cy="40" r="32"
+                                :stroke-dasharray="201"
+                                :stroke-dashoffset="201 - (201 * Math.min((todayData.new_words_learned + todayData.review_completed) / Math.max(todayData.daily_goal,1), 1))"/>
+                            <text x="40" y="46" text-anchor="middle" fill="white" font-size="14" font-weight="bold" style="transform:none;">
+                                {{ todayData.daily_goal > 0 ? Math.round((todayData.new_words_learned + todayData.review_completed) / todayData.daily_goal * 100) : 0 }}%
+                            </text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2" style="margin-top:16px;gap:12px;">
+                    <button @click="goTo('learning')" class="card" style="padding:20px;text-align:left;cursor:pointer;border:none;">
+                        <div class="icon bg-blue-100 text-blue-500 mb-2">📖</div>
+                        <h3 class="font-bold">开始学习</h3>
+                        <p class="text-sm text-gray-500 mt-2">新词 {{ todayData.remaining_new || 0 }}</p>
+                    </button>
+                    <button @click="goTo('library')" class="card" style="padding:20px;text-align:left;cursor:pointer;border:none;">
+                        <div class="icon bg-purple-100 text-purple-500 mb-2">📚</div>
+                        <h3 class="font-bold">词库管理</h3>
+                        <p class="text-sm text-gray-500 mt-2">{{ systemLibraries.length }} 个词库</p>
+                    </button>
+                </div>
+                <button @click="goTo('wordgroup')" class="card" style="margin-top:12px;padding:16px;text-align:left;cursor:pointer;border:none;width:100%;display:flex;align-items:center;gap:14px;">
+                    <div class="icon mb-0" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);font-size:24px;flex-shrink:0;">🌿</div>
+                    <div>
+                        <h3 class="font-bold" style="color:#065f46;">词族记忆</h3>
+                        <p class="text-sm text-gray-500 mt-1">按词根词缀分组，高效记忆同根词</p>
+                    </div>
+                    <span style="margin-left:auto;color:#9ca3af;font-size:18px;">›</span>
+                </button>
+                
+                <button v-if="!todayData.signed_in" @click="signIn" class="btn bg-yellow-400 text-gray-800 font-bold" style="margin-top:16px;">
+                    🎁 签到领积分
+                </button>
+                <div v-else class="text-center text-green-500 font-medium" style="margin-top:16px;">
+                    ✓ 今日已签到
+                </div>
+            </main>
+            
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- 学习页 -->
+        <div v-if="currentUser && currentPage === 'learning'" class="page active">
+            <header class="header">
+                <div class="flex items-center gap-2">
+                    <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                    <span class="font-bold">开始学习</span>
+                </div>
+            </header>
+            <main class="container">
+                <div v-if="!currentWord" class="card p-8 text-center">
+                    <div class="icon bg-blue-100 text-blue-500 mb-4" style="width:80px;height:80px;margin:0 auto;font-size:40px;">📖</div>
+                    <h2 class="text-xl font-bold">准备好了吗？</h2>
+                    <p class="text-gray-500 mt-2">点击下方开始今日学习</p>
+                    <button @click="startLearning" class="btn btn-primary mt-4">开始学习</button>
+                </div>
+                
+                <div v-else-if="currentWord && !showResult" class="card p-8">
+                    <div class="text-center mb-6">
+                        <div class="flex items-center justify-center gap-2 mb-2">
+                            <span :class="['quiz-type-badge', currentWord.taskType==='review'?'badge-review':'badge-new']">
+                                {{ currentWord.taskType==='review' ? '🔁 复习' : '📖 新词' }}
+                            </span>
+                            <span v-if="comboCount >= 2" class="combo-badge" style="background:#fef3c7;color:#d97706;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">
+                                🔥 {{ comboCount }} 连击
+                            </span>
+                        </div>
+                        <p class="text-gray-500 text-sm">第 {{ currentWordIndex + 1 }} / {{ todayTasks.length }} 个单词</p>
+                        <h2 class="text-5xl font-bold text-gray-800 mt-4">{{ currentWord.word }}</h2>
+                        <div class="flex items-center justify-center gap-2 mt-2">
+                            <p class="text-gray-400">{{ currentWord.phonetic }}</p>
+                            <span v-if="currentWord.part_of_speech" style="background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:0.3px;">{{ currentWord.part_of_speech }}</span>
+                        </div>
+                        <button @click="playAudio" style="background:none;border:none;font-size:24px;cursor:pointer;margin-top:8px;">🔊</button>
                     </div>
                     
-                    <div class="bg-white rounded-xl p-4">
-                        <h3 class="font-bold text-gray-800 mb-4">账户信息</h3>
-                        <div class="space-y-3">
-                            <div class="flex justify-between py-2 border-b border-gray-100">
-                                <span class="text-gray-600">用户名</span>
-                                <span class="font-medium">{{ currentUser.username }}</span>
-                            </div>
-                            <div class="flex justify-between py-2 border-b border-gray-100">
-                                <span class="text-gray-600">角色</span>
-                                <span class="font-medium">{{ currentUser.role === 'parent' ? '家长' : '孩子' }}</span>
-                            </div>
-                            <div class="flex justify-between py-2">
-                                <span class="text-gray-600">总积分</span>
-                                <span class="font-medium text-blue-500">{{ profile.total_score }}</span>
+                    <!-- 选择题 -->
+                    <div class="mb-6">
+                        <p class="text-gray-600 text-center mb-4 font-medium">请选择正确的中文意思：</p>
+                        <div class="space-y-2">
+                            <button v-for="(option, idx) in currentOptions" :key="idx"
+                                @click="handleOptionClick(option, idx)"
+                                :style="optionStyle(option, idx)"
+                                style="width:100%;padding:14px 16px;border-radius:12px;text-align:left;font-weight:500;transition:all 0.2s;cursor:pointer;border:2px solid;display:flex;align-items:center;justify-content:space-between;">
+                                <span>{{ option.text }}</span>
+                                <span v-if="option.pos" style="font-size:11px;font-weight:700;opacity:0.7;margin-left:8px;flex-shrink:0;">{{ option.pos }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div v-else-if="showResult" class="card p-8 text-center">
+                    <div :class="isCorrect ? 'bg-green-100' : 'bg-red-100'" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span :class="isCorrect ? 'text-green-500' : 'text-red-500'" style="font-size:40px;">
+                            {{ isCorrect ? '✓' : '✗' }}
+                        </span>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-2">{{ isCorrect ? '回答正确！' : '回答错误' }}</h3>
+                    <!-- 单词 + 词性 + 正确答案 -->
+                    <div v-if="currentWord" style="margin-bottom:10px;">
+                        <div class="flex items-center justify-center gap-2 flex-wrap">
+                            <span style="font-size:20px;font-weight:700;color:#1f2937;">{{ currentWord.word }}</span>
+                            <span v-if="currentWord.part_of_speech" style="background:#e0f2fe;color:#0369a1;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;">{{ currentWord.part_of_speech }}</span>
+                            <span style="color:#6b7280;font-size:14px;">{{ currentWord.phonetic }}</span>
+                        </div>
+                        <p v-if="!isCorrect" class="text-gray-500 mt-1" style="font-size:14px;">正确答案：<span style="color:#22c55e;font-weight:700;">{{ currentWord.meaning }}</span></p>
+                        <p v-else style="color:#6b7280;font-size:14px;margin-top:2px;">{{ currentWord.meaning }}</p>
+                    </div>
+                    
+                    <!-- 例句卡片 -->
+                    <div v-if="currentWord && currentWord.example_sentence" :class="['example-card', isCorrect ? '' : 'wrong']" style="text-align:left;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                            <p style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:0.5px;">📖 例句</p>
+                            <button @click.stop="playExampleSentence(currentWord.example_sentence)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:0 2px;" title="朗读例句">🔊</button>
+                        </div>
+                        <p style="font-size:15px;line-height:1.7;color:#1f2937;" v-html="highlightWord(currentWord.example_sentence, currentWord.word, isCorrect)"></p>
+                        <p v-if="currentWord.example_cn" style="font-size:13px;color:#6b7280;margin-top:6px;">{{ currentWord.example_cn }}</p>
+                    </div>
+
+                    <button @click="nextWord" class="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold" style="margin-top:16px;">
+                        {{ currentWordIndex < todayTasks.length - 1 ? '下一题 →' : '完成 🎉' }}
+                    </button>
+                </div>
+            </main>
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- 词库页 -->
+        <div v-if="currentUser && currentPage === 'library'" class="page active">
+            <header class="header">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                        <span class="font-bold">词库管理</span>
+                    </div>
+                    <button v-if="selectedLibraries.length > 0" @click="saveLibrarySelection" class="text-blue-500 font-bold text-sm">保存</button>
+                </div>
+            </header>
+            <main class="container">
+                <div style="margin-top:16px;">
+                    <div v-if="systemLibraries.length === 0" class="card p-8 text-center">
+                        <p class="text-gray-500">加载中...</p>
+                    </div>
+                    <div v-else class="space-y-2">
+                        <div v-for="lib in systemLibraries" :key="lib.id" 
+                            @click="toggleLibrary(lib.id)"
+                            :class="['lib-item', selectedLibraries.includes(lib.id) ? 'selected' : '']">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-bold text-gray-800">{{ lib.name }}</h3>
+                                    <p class="text-sm text-gray-500 mt-1">{{ lib.description }}</p>
+                                    <p class="text-xs text-gray-400 mt-2">
+                                        <span v-if="lib.words">{{ lib.words.length }} 个单词</span>
+                                        <span v-else>0 个单词</span>
+                                    </p>
+                                </div>
+                                <div style="font-size:20px;">
+                                    {{ selectedLibraries.includes(lib.id) ? '✓' : '' }}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
-            
-            <!-- 底部导航 -->
-            <nav v-if="currentPage !== 'learning'" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-                <div class="max-w-2xl mx-auto flex justify-around py-2">
-                    <button @click="goTo('home')" :class="currentPage === 'home' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
-                        <i class="ri-home-4-line text-xl"></i>
-                        <span class="text-xs mt-1">首页</span>
-                    </button>
-                    <button @click="goTo('library')" :class="currentPage === 'library' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
-                        <i class="ri-book-2-line text-xl"></i>
-                        <span class="text-xs mt-1">词库</span>
-                    </button>
-                    <button @click="goTo('wrongbook')" :class="currentPage === 'wrongbook' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
-                        <i class="ri-book-mark-line text-xl"></i>
-                        <span class="text-xs mt-1">错题</span>
-                    </button>
-                    <button @click="goTo('records')" :class="currentPage === 'records' ? 'text-blue-500' : 'text-gray-400'" class="flex flex-col items-center p-2">
-                        <i class="ri-bar-chart-box-line text-xl"></i>
-                        <span class="text-xs mt-1">记录</span>
-                    </button>
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
                 </div>
             </nav>
         </div>
         
-        <!-- Toast 提示 -->
-        <div v-if="toast.show" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-xl shadow-lg z-50">
+        <!-- 错题页 -->
+        <div v-if="currentUser && currentPage === 'wrongbook'" class="page active">
+            <header class="header">
+                <div class="flex items-center gap-2">
+                    <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                    <span class="font-bold">错题本</span>
+                </div>
+            </header>
+            <main class="container">
+                <!-- Tab 切换 -->
+                <div class="flex gap-2" style="margin-top:16px;margin-bottom:16px;">
+                    <button @click="wrongbookTab='list'" :class="wrongbookTab==='list'?'btn-primary':'btn-outline'" class="btn" style="flex:1;padding:10px;">📝 错题列表</button>
+                    <button @click="wrongbookTab='calendar'" :class="wrongbookTab==='calendar'?'btn-primary':'btn-outline'" class="btn" style="flex:1;padding:10px;">📅 复习日历</button>
+                </div>
+
+                <!-- 错题列表 -->
+                <div v-if="wrongbookTab==='list'">
+                    <div v-if="wrongQuestions.length === 0" class="card p-8 text-center">
+                        <div class="icon bg-gray-100 text-gray-500 mb-4" style="width:80px;height:80px;margin:0 auto;font-size:40px;">📝</div>
+                        <h2 class="text-xl font-bold">错题本</h2>
+                        <p class="text-gray-500 mt-2">暂无错题记录</p>
+                    </div>
+                    <div v-else>
+                        <div class="flex items-center justify-between mb-3" style="padding:0 2px;">
+                            <span class="text-gray-600 font-medium" style="font-size:14px;">共 {{ wrongQuestions.length }} 道错题</span>
+                            <span style="font-size:12px;color:#9ca3af;">点击单词可播放发音</span>
+                        </div>
+                        <div v-for="q in wrongQuestions" :key="q.id" class="wrong-item">
+                            <div class="wrong-item-header">
+                                <div style="flex:1;">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span @click="playWrongQuestion(q)" class="text-xl font-bold text-gray-800" style="cursor:pointer;">{{ q.word }}</span>
+                                        <span style="color:#9ca3af;font-size:13px;">{{ q.phonetic }}</span>
+                                        <span v-if="q.next_review_date <= todayStr" style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">待复习</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 mt-1">{{ q.meaning }}</div>
+                                </div>
+                                <button @click="deleteWrongQuestion(q.id)" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;color:#9ca3af;">🗑</button>
+                            </div>
+                            <!-- 统计标签行 -->
+                            <div class="flex items-center gap-2 flex-wrap" style="margin-bottom:6px;">
+                                <span :class="['wrong-count-badge', q.wrong_count >= 5 ? 'badge-danger' : q.wrong_count >= 3 ? 'badge-warning' : 'badge-ok']">
+                                    错误 {{ q.wrong_count }} 次
+                                </span>
+                                <span class="wrong-count-badge badge-ok">正确 {{ q.correct_count }} 次</span>
+                                <span style="font-size:11px;color:#9ca3af;">下次复习: {{ q.next_review_date }}</span>
+                            </div>
+                            <!-- 例句 -->
+                            <div v-if="q.example_sentence" class="example-mini">
+                                <span v-html="highlightWord(q.example_sentence, q.word, true)"></span>
+                                <span v-if="q.example_cn" style="display:block;color:#9ca3af;margin-top:2px;">{{ q.example_cn }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 复习日历 -->
+                <div v-if="wrongbookTab==='calendar'">
+                    <div v-if="wrongQuestions.length === 0" class="card p-8 text-center">
+                        <p class="text-gray-500">暂无待复习记录</p>
+                    </div>
+                    <div v-else>
+                        <div v-for="(group, date) in calendarGroups" :key="date" :class="['calendar-day', date < todayStr ? 'overdue' : date === todayStr ? 'today' : '']">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <span class="font-bold text-gray-800">{{ date }}</span>
+                                    <span v-if="date < todayStr" style="color:#ef4444;font-size:12px;margin-left:6px;">已逾期</span>
+                                    <span v-else-if="date === todayStr" style="color:#22c55e;font-size:12px;margin-left:6px;">今天</span>
+                                </div>
+                                <span class="calendar-word-count">{{ group.length }} 词</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="q in group" :key="q.id" style="background:#f3f4f6;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:500;">{{ q.word }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
+                </div>
+            </nav>
+        </div>
+        
+
+        <!-- 词族记忆页 -->
+        <div v-if="currentUser && currentPage === 'wordgroup'" class="page active">
+            <header class="header">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                        <span class="font-bold">{{ wgDetailGroup ? wgDetailGroup.name : '词族记忆' }}</span>
+                    </div>
+                    <button v-if="wgDetailGroup" @click="wgDetailGroup=null" style="background:none;border:none;font-size:14px;color:#3b82f6;cursor:pointer;">← 返回列表</button>
+                </div>
+            </header>
+            <main class="container">
+
+                <!-- 词族列表 -->
+                <div v-if="!wgDetailGroup" style="margin-top:16px;">
+                    <p class="text-sm text-gray-500 mb-4" style="text-align:center;">选择一个词族，一次记住一批同根词</p>
+                    <div v-for="g in wordGroups" :key="g.id" class="group-card" @click="wgDetailGroup=g">
+                        <div class="group-icon" :style="{background: g.color}">{{ g.emoji }}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div class="font-bold" style="font-size:15px;color:#1f2937;">{{ g.name }}</div>
+                            <div class="text-sm text-gray-500" style="margin-top:2px;">{{ g.desc }}</div>
+                            <div style="margin-top:6px;">
+                                <span v-for="w in g.words.slice(0,4)" :key="w.word" class="group-tag" style="background:#eff6ff;color:#2563eb;">{{ w.word }}</span>
+                                <span v-if="g.words.length > 4" class="group-tag" style="background:#f3f4f6;color:#6b7280;">+{{ g.words.length-4 }}</span>
+                            </div>
+                        </div>
+                        <span style="color:#d1d5db;font-size:20px;flex-shrink:0;">›</span>
+                    </div>
+                </div>
+
+                <!-- 词族详情 -->
+                <div v-if="wgDetailGroup" style="margin-top:16px;">
+                    <!-- 词族信息 -->
+                    <div class="card" style="padding:16px;margin-bottom:16px;background:linear-gradient(135deg,#f0fdf4,#f5f3ff);border:none;">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="group-icon" :style="{background: wgDetailGroup.color}">{{ wgDetailGroup.emoji }}</div>
+                            <div>
+                                <div class="font-bold" style="font-size:16px;">{{ wgDetailGroup.name }}</div>
+                                <div class="text-sm text-gray-500">{{ wgDetailGroup.desc }}</div>
+                            </div>
+                        </div>
+                        <div v-if="wgDetailGroup.rootTip" style="background:white;border-radius:10px;padding:10px 14px;font-size:13px;color:#374151;line-height:1.6;">
+                            💡 <strong>记忆口诀：</strong>{{ wgDetailGroup.rootTip }}
+                        </div>
+                    </div>
+
+                    <!-- 单词列表 -->
+                    <div v-for="(w, i) in wgDetailGroup.words" :key="w.word"
+                         class="wg-word-card"
+                         :style="{animationDelay: i*0.05+'s'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold" style="font-size:18px;color:#1f2937;">{{ w.word }}</span>
+                                <span class="text-gray-400" style="font-size:13px;">{{ w.phonetic }}</span>
+                                <span v-if="w.rootPart" class="wg-root-pill">{{ w.rootPart }}</span>
+                            </div>
+                            <button @click="wgPlayWord(w.word)" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px;">🔊</button>
+                        </div>
+                        <div style="font-size:14px;color:#374151;margin-bottom:6px;">{{ w.meaning }}</div>
+                        <div v-if="w.example_sentence" style="font-size:12px;color:#6b7280;line-height:1.6;border-top:1px solid #f3f4f6;padding-top:8px;" v-html="wgHighlight(w.example_sentence, w.word)"></div>
+                        <div v-if="w.example_cn" style="font-size:11px;color:#9ca3af;margin-top:2px;">{{ w.example_cn }}</div>
+                    </div>
+
+                    <div class="text-center" style="margin-top:16px;color:#9ca3af;font-size:13px;">
+                        共 {{ wgDetailGroup.words.length }} 个单词 · 全部看完就记住了！💪
+                    </div>
+                </div>
+            </main>
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- 记录页 -->
+        <div v-if="currentUser && currentPage === 'records'" class="page active">
+            <header class="header">
+                <div class="flex items-center gap-2">
+                    <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                    <span class="font-bold">学习记录</span>
+                </div>
+            </header>
+            <main class="container">
+                <div class="card p-8 text-center">
+                    <div class="icon bg-green-100 text-green-500 mb-4" style="width:80px;height:80px;margin:0 auto;font-size:40px;">📊</div>
+                    <h2 class="text-xl font-bold">学习记录</h2>
+                    <p class="text-gray-500 mt-2">开始学习后显示历史记录</p>
+                </div>
+            </main>
+            <nav class="nav">
+                <div class="container flex justify-around">
+                    <button @click="goTo('home')" :class="['nav-btn', currentPage==='home'?'active':'']">🏠<span style="font-size:12px;margin-top:4px;display:block;">首页</span></button>
+                    <button @click="goTo('library')" :class="['nav-btn', currentPage==='library'?'active':'']">📚<span style="font-size:12px;margin-top:4px;display:block;">词库</span></button>
+                    <button @click="goTo('wordgroup')" :class="['nav-btn', currentPage==='wordgroup'?'active':'']">🌿<span style="font-size:12px;margin-top:4px;display:block;">词族</span></button>
+                    <button @click="goTo('wrongbook')" :class="['nav-btn', currentPage==='wrongbook'?'active':'']">📝<span style="font-size:12px;margin-top:4px;display:block;">错题</span></button>
+                    <button @click="goTo('records')" :class="['nav-btn', currentPage==='records'?'active':'']">📊<span style="font-size:12px;margin-top:4px;display:block;">记录</span></button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Toast -->
+        <div v-if="toast.show" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#374151;color:white;padding:12px 24px;border-radius:12px;z-index:100;font-size:14px;">
             {{ toast.message }}
         </div>
     </div>
 
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script>
-        const { createApp, ref, reactive, computed, onMounted } = Vue;
-        
-        const API_BASE = 'http://localhost:8000/api';
+        const { createApp, ref, reactive, onMounted, computed } = Vue;
+        const API_BASE = 'http://81.68.130.100:8000/api';
         
         createApp({
             setup() {
                 const currentUser = ref(null);
                 const currentPage = ref('home');
                 const showRegister = ref(false);
-                
                 const loginForm = reactive({ username: '', password: '' });
                 const registerForm = reactive({ name: '', username: '', password: '', role: 'child' });
-                
-                const profile = reactive({ total_score: 0, daily_goal: 10, selected_library_ids: [] });
-                const todayData = reactive({ 
-                    new_words_learned: 0, review_completed: 0, daily_goal: 10, 
-                    remaining_new: 0, remaining_review: 0, signed_in: false, total_score: 0, 
-                    today_tasks: [], review_count: 0, new_count: 0 
-                });
-                const stats = reactive({ streak_days: 0, total_words: 0, total_sessions: 0, average_score: 0 });
-                const dailyRecords = ref([]);
+                const profile = reactive({ total_score: 0, daily_goal: 10 });
+                const todayData = reactive({ new_words_learned: 0, review_completed: 0, daily_goal: 10, remaining_new: 0, remaining_review: 0, signed_in: false });
+                const stats = reactive({ streak_days: 0, total_words: 0 });
                 const systemLibraries = ref([]);
-                const customLibraries = ref([]);
-                
-                // 自定义词库相关
-                const showCreateLibrary = ref(false);
-                const editingLibrary = ref(null);
-                const libraryForm = reactive({
-                    name: '',
-                    description: '',
-                    words_text: ''
-                });
-                
-                // 错题本相关
-                const wrongQuestions = ref([]);
-                const wrongStats = reactive({ total_wrong: 0, reviewing: 0, mastered: 0, due_today: 0 });
-                
                 const selectedLibraries = ref([]);
-                const learningTask = ref(null);  // 当前学习任务
-                
-                // 选择题相关
-                const quizData = ref(null);
-                const loadingQuiz = ref(false);
+                const toast = reactive({ show: false, message: '' });
+
+                // 学习相关
+                const todayTasks = ref([]);
+                const currentWordIndex = ref(0);
+                const currentWord = ref(null);
+                const currentOptions = ref([]);
+                const selectedOptionIndex = ref(-1);
                 const selectedOption = ref(null);
                 const showResult = ref(false);
-                const quizResult = ref({});
-                const isRecording = ref(false);
-                const recognizedText = ref('');
-                
-                // 语音识别
-                let recognition = null;
-                
-                // ── 自定义词库辅助计算 ──────────────────────────────────────
-                const parsedWords = computed(() => {
-                    if (!libraryForm.words_text.trim()) return [];
-                    return libraryForm.words_text
-                        .split('\n')
-                        .map(line => line.trim())
-                        .filter(line => line.length > 0)
-                        .map((line, idx) => {
-                            const parts = line.split(/\s+/);
-                            const word = parts[0] || '';
-                            const meaning = parts.slice(1).join(' ') || '';
-                            return { id: `custom-word-${idx}`, word, meaning };
-                        })
-                        .filter(w => w.word && w.meaning);
-                });
+                const isCorrect = ref(false);
+                const lastScore = ref(0);
+                // 连击
+                const comboCount = ref(0);
+                // 今日日期字符串（本地时区）
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-                const parsedWordCount = computed(() => parsedWords.value.length);
-                const previewWords = computed(() => parsedWords.value.slice(0, 5));
-
-                // ── 自定义词库 CRUD ─────────────────────────────────────────
-                const loadCustomLibraries = async () => {
-                    try {
-                        const data = await api('/libraries?lib_type=custom');
-                        customLibraries.value = data;
-                    } catch (e) {
-                        console.error('加载自定义词库失败', e);
-                    }
-                };
-
-                const closeLibraryModal = () => {
-                    showCreateLibrary.value = false;
-                    editingLibrary.value = null;
-                    libraryForm.name = '';
-                    libraryForm.description = '';
-                    libraryForm.words_text = '';
-                };
-
-                const editLibrary = (lib) => {
-                    editingLibrary.value = lib;
-                    libraryForm.name = lib.name;
-                    libraryForm.description = lib.description || '';
-                    // 将词库单词还原成文本
-                    libraryForm.words_text = lib.words
-                        .map(w => `${w.word} ${w.meaning}`)
-                        .join('\n');
-                    showCreateLibrary.value = true;
-                };
-
-                const saveLibrary = async () => {
-                    if (!libraryForm.name.trim()) {
-                        showToast('请输入词库名称');
-                        return;
-                    }
-                    // 为每个单词生成唯一 id
-                    const words = parsedWords.value.map((w, idx) => ({
-                        id: editingLibrary.value
-                            ? `${editingLibrary.value.id}-w${idx}`
-                            : `cw-${Date.now()}-${idx}`,
-                        word: w.word,
-                        phonetic: '',
-                        meaning: w.meaning,
-                        example_sentence: ''
-                    }));
-
-                    try {
-                        if (editingLibrary.value) {
-                            // 更新
-                            await api(`/libraries/${editingLibrary.value.id}`, {
-                                method: 'PUT',
-                                body: JSON.stringify({
-                                    name: libraryForm.name.trim(),
-                                    description: libraryForm.description.trim(),
-                                    words
-                                })
-                            });
-                            showToast('词库已更新');
-                        } else {
-                            // 创建
-                            await api('/libraries', {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    name: libraryForm.name.trim(),
-                                    description: libraryForm.description.trim(),
-                                    words
-                                })
-                            });
-                            showToast('词库创建成功！');
-                        }
-                        closeLibraryModal();
-                        await loadCustomLibraries();
-                    } catch (e) {
-                        showToast(e.message);
-                    }
-                };
-
-                const deleteLibrary = async (libId) => {
-                    if (!confirm('确定要删除这个词库吗？')) return;
-                    try {
-                        await api(`/libraries/${libId}`, { method: 'DELETE' });
-                        showToast('词库已删除');
-                        // 同时从已选列表中移除
-                        const idx = selectedLibraries.value.indexOf(libId);
-                        if (idx >= 0) selectedLibraries.value.splice(idx, 1);
-                        await loadCustomLibraries();
-                    } catch (e) {
-                        showToast(e.message);
-                    }
-                };
-                // ────────────────────────────────────────────────────────────
-                
-                const toast = reactive({ show: false, message: '' });
+                // 错题本
+                const wrongQuestions = ref([]);
+                const wrongbookTab = ref('list');
                 
                 const showToast = (msg) => {
                     toast.message = msg;
@@ -774,13 +650,16 @@
                     const token = localStorage.getItem('token');
                     const headers = { 'Content-Type': 'application/json' };
                     if (token) headers['Authorization'] = `Bearer ${token}`;
-                    
-                    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-                    if (!res.ok) {
-                        const err = await res.json();
-                        throw new Error(err.detail || '请求失败');
+                    try {
+                        const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({ detail: '请求失败' }));
+                            throw new Error(err.detail || '请求失败');
+                        }
+                        return res.json();
+                    } catch (e) {
+                        throw e;
                     }
-                    return res.json();
                 };
                 
                 const login = async () => {
@@ -788,342 +667,100 @@
                         const formData = new URLSearchParams();
                         formData.append('username', loginForm.username);
                         formData.append('password', loginForm.password);
-                        
-                        const res = await fetch(`${API_BASE}/auth/login`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: formData
+                        const res = await fetch(`${API_BASE}/auth/login`, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+                            body: formData 
                         });
-                        
                         if (!res.ok) throw new Error('登录失败');
                         const data = await res.json();
-                        
                         localStorage.setItem('token', data.access_token);
                         currentUser.value = data.user;
                         await loadData();
                         showToast('登录成功');
-                    } catch (e) {
-                        showToast(e.message);
+                    } catch (e) { 
+                        showToast(e.message || '登录失败'); 
                     }
                 };
                 
                 const register = async () => {
                     try {
-                        const data = await api('/auth/register', {
-                            method: 'POST',
-                            body: JSON.stringify(registerForm)
-                        });
+                        const data = await api('/auth/register', { method: 'POST', body: JSON.stringify(registerForm) });
                         localStorage.setItem('token', data.access_token);
                         currentUser.value = data.user;
                         showRegister.value = false;
                         await loadData();
                         showToast('注册成功');
-                    } catch (e) {
-                        showToast(e.message);
+                    } catch (e) { 
+                        showToast(e.message || '注册失败'); 
                     }
                 };
                 
                 const signOut = () => {
                     localStorage.removeItem('token');
                     currentUser.value = null;
-                    loginForm.username = '';
-                    loginForm.password = '';
+                    currentPage.value = 'home';
                 };
                 
                 const loadData = async () => {
                     try {
-                        const [profileData, todayDataRes, statsRes, recordsRes, libsRes, wrongStatsRes, wrongQuestionsRes] = await Promise.all([
-                            api('/records/profile'),
-                            api('/learning/today'),
-                            api('/records/stats'),
-                            api('/records/daily?days=7'),
-                            api('/libraries?lib_type=system'),
-                            api('/wrong-questions/stats'),
-                            api('/wrong-questions')
+                        const [profileData, todayDataRes, statsRes, libsRes] = await Promise.all([
+                            api('/records/profile').catch(() => ({ total_score: 0, daily_goal: 10 })),
+                            api('/learning/today').catch(() => ({ new_words_learned: 0, review_completed: 0, daily_goal: 10, remaining_new: 0, remaining_review: 0, signed_in: false })),
+                            api('/records/stats').catch(() => ({ streak_days: 0, total_words: 0 })),
+                            api('/libraries?lib_type=system').catch(() => [])
                         ]);
-                        
                         Object.assign(profile, profileData);
                         Object.assign(todayData, todayDataRes);
                         Object.assign(stats, statsRes);
-                        Object.assign(wrongStats, wrongStatsRes);
-                        dailyRecords.value = recordsRes;
-                        systemLibraries.value = libsRes;
-                        wrongQuestions.value = wrongQuestionsRes;
-                        selectedLibraries.value = profile.selected_library_ids || [];
-                        
-                        // 加载自定义词库
-                        await loadCustomLibraries();
-                        
-                        // 获取今日学习任务
-                        if (todayDataRes.today_tasks && todayDataRes.today_tasks.length > 0) {
-                            learningTask.value = todayDataRes.today_tasks[0];
-                        } else {
-                            learningTask.value = null;
-                        }
+                        systemLibraries.value = libsRes || [];
                     } catch (e) {
                         console.error(e);
                     }
                 };
-                
-                const goTo = async (page) => {
-                    currentPage.value = page;
-                    if (page === 'learning') {
-                        await loadTodayLearning();
-                    } else if (page === 'wrongbook') {
-                        await loadWrongQuestions();
-                    } else if (page === 'library') {
-                        await loadCustomLibraries();
-                    }
-                };
-                
-                const loadTodayLearning = async () => {
-                    const data = await api('/learning/today');
-                    Object.assign(todayData, data);
-                    if (data.today_tasks && data.today_tasks.length > 0) {
-                        learningTask.value = data.today_tasks[0];
-                        // 重置选择题状态
-                        quizData.value = null;
-                        selectedOption.value = null;
-                        showResult.value = false;
-                        // 加载选择题数据
-                        await loadQuiz();
-                    } else {
-                        learningTask.value = null;
-                        quizData.value = null;
-                    }
-                };
-                
-                // 加载选择题数据
-                const loadQuiz = async () => {
-                    if (!learningTask.value) return;
-                    loadingQuiz.value = true;
-                    try {
-                        const data = await api(`/learning/quiz-options/${learningTask.value.word_id}`);
-                        quizData.value = data;
-                        selectedOption.value = null;
-                        showResult.value = false;
-                        // 自动播放发音
-                        setTimeout(() => playPronunciation(data.word), 500);
-                    } catch (e) {
-                        console.error(e);
-                        showToast('加载题目失败');
-                    } finally {
-                        loadingQuiz.value = false;
-                    }
-                };
-                
-                // 播放标准发音
-                const playPronunciation = (word) => {
-                    // 使用有道词典TTS
-                    const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word)}&type=2`);
-                    audio.play().catch(e => {
-                        // 降级：使用 Web Speech API
-                        const utterance = new SpeechSynthesisUtterance(word);
-                        utterance.lang = 'en-US';
-                        utterance.rate = 0.8;
-                        speechSynthesis.speak(utterance);
-                    });
-                };
-                
-                // 开始录音
-                const startRecording = () => {
-                    if (isRecording.value) {
-                        stopRecording();
-                        return;
-                    }
-                    
-                    // 检查浏览器支持
-                    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                        showToast('您的浏览器不支持语音识别');
-                        return;
-                    }
-                    
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    recognition = new SpeechRecognition();
-                    recognition.lang = 'en-US';
-                    recognition.continuous = false;
-                    recognition.interimResults = false;
-                    
-                    recognition.onresult = (event) => {
-                        const transcript = event.results[0][0].transcript;
-                        recognizedText.value = transcript;
-                        // 根据识别结果评分
-                        calculatePronunciationScore(transcript);
-                    };
-                    
-                    recognition.onerror = (event) => {
-                        console.error('Speech recognition error:', event.error);
-                        isRecording.value = false;
-                        if (event.error !== 'no-speech') {
-                            showToast('语音识别失败，请重试');
-                        }
-                    };
-                    
-                    recognition.onend = () => {
-                        isRecording.value = false;
-                    };
-                    
-                    recognition.start();
-                    isRecording.value = true;
-                    showToast('请朗读英文单词...');
-                };
-                
-                const stopRecording = () => {
-                    if (recognition) {
-                        recognition.stop();
-                    }
-                    isRecording.value = false;
-                };
-                
-                // 计算发音得分
-                const calculatePronunciationScore = (spoken) => {
-                    if (!quizData.value || !spoken) return 50;
-                    const target = quizData.value.word.toLowerCase();
-                    const spoken_lower = spoken.toLowerCase().trim();
-                    
-                    if (spoken_lower === target) {
-                        pronunciationScore = 100;
-                    } else {
-                        // 计算相似度
-                        let matches = 0;
-                        for (let char of spoken_lower) {
-                            if (target.includes(char)) matches++;
-                        }
-                        const similarity = matches / Math.max(target.length, spoken_lower.length);
-                        pronunciationScore = Math.round(similarity * 100);
-                    }
-                };
-                
-                let pronunciationScore = 50;
-                
-                // 选择选项
-                const selectOption = (option) => {
-                    if (showResult.value) return;
-                    selectedOption.value = option;
-                };
-                
-                // 提交答案
-                const submitQuiz = async () => {
-                    if (!selectedOption.value || !quizData.value) return;
-                    
-                    try {
-                        const result = await api('/learning/submit-quiz', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                word_id: quizData.value.word_id,
-                                selected_meaning: selectedOption.value.text,
-                                pronunciation_score: pronunciationScore
-                            })
-                        });
-                        quizResult.value = result;
-                        showResult.value = true;
-                        
-                        if (result.added_to_wrong_book) {
-                            showToast('答错了，已加入错题本');
-                        }
-                    } catch (e) {
-                        showToast(e.message);
-                    }
-                };
-                
-                // 下一题
-                const nextTask = async () => {
-                    // 从今日任务列表中移除当前任务
-                    const taskIndex = todayData.today_tasks.findIndex(t => t.word_id === learningTask.value?.word_id);
-                    if (taskIndex > -1) {
-                        todayData.today_tasks.splice(taskIndex, 1);
-                    }
-                    
-                    // 加载下一个任务
-                    if (todayData.today_tasks.length > 0) {
-                        learningTask.value = todayData.today_tasks[0];
-                        quizData.value = null;
-                        selectedOption.value = null;
-                        showResult.value = false;
-                        pronunciationScore = 50;
-                        recognizedText.value = '';
-                        await loadQuiz();
-                    } else {
-                        learningTask.value = null;
-                        quizData.value = null;
-                        // 刷新今日数据
-                        const data = await api('/learning/today');
-                        Object.assign(todayData, data);
-                    }
-                    
-                    // 更新统计数据
-                    const statsRes = await api('/records/stats');
-                    Object.assign(stats, statsRes);
-                };
-                
+
                 const loadWrongQuestions = async () => {
-                    const [statsRes, questionsRes] = await Promise.all([
-                        api('/wrong-questions/stats'),
-                        api('/wrong-questions')
-                    ]);
-                    Object.assign(wrongStats, statsRes);
-                    wrongQuestions.value = questionsRes;
-                };
-                
-                const submitLearning = async () => {
-                    if (!learningTask.value) return;
-                    
                     try {
-                        const avgScore = Math.round((pronunciationScore.value + meaningScore.value) / 2);
-                        
-                        if (learningTask.value.type === 'review') {
-                            // 错题复习
-                            await api('/learning/review', {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    wrong_question_id: learningTask.value.id,
-                                    score: avgScore
-                                })
-                            });
-                            showToast(avgScore >= 60 ? '复习正确！' : '还需努力！');
-                        } else {
-                            // 新词学习
-                            const result = await api('/learning/session', {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    word_id: learningTask.value.word_id,
-                                    pronunciation_score: pronunciationScore.value,
-                                    meaning_score: meaningScore.value,
-                                    total_score: avgScore
-                                })
-                            });
-                            
-                            if (result.added_to_wrong_book) {
-                                showToast('学习完成，该词已加入错题本');
-                            } else {
-                                showToast('学习记录已保存');
-                            }
-                        }
-                        
-                        // 加载下一个任务
-                        await loadTodayLearning();
-                        await loadWrongQuestions();
-                        
-                        // 更新统计数据
-                        const statsRes = await api('/records/stats');
-                        Object.assign(stats, statsRes);
+                        const list = await api('/wrong-questions');
+                        // 尝试为每个错题附加例句（从词库数据中获取）
+                        wrongQuestions.value = await enrichWrongQuestionsWithExamples(list);
                     } catch (e) {
-                        showToast(e.message);
+                        console.error('加载错题失败:', e);
+                        wrongQuestions.value = [];
+                    }
+                };
+
+                // 给错题列表附加例句信息
+                const enrichWrongQuestionsWithExamples = async (list) => {
+                    if (!list || list.length === 0) return list;
+                    try {
+                        // 批量获取例句：通过 quiz-options 接口（里面有 example_sentence）
+                        // 为减少请求，只取前20条，其余用空例句
+                        const enriched = await Promise.all(
+                            list.map(async (q) => {
+                                try {
+                                    const token = localStorage.getItem('token');
+                                    const res = await fetch(`${API_BASE}/learning/quiz-options/${q.word_id}`, {
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    });
+                                    const data = await res.json();
+                                    return { ...q, example_sentence: data.example_sentence || '', example_cn: data.example_cn || '' };
+                                } catch {
+                                    return q;
+                                }
+                            })
+                        );
+                        return enriched;
+                    } catch {
+                        return list;
                     }
                 };
                 
-                const signIn = async () => {
-                    try {
-                        const data = await api('/learning/signin', { method: 'POST' });
-                        showToast(`签到成功，+${data.bonus_score}积分`);
-                        await loadData();
-                    } catch (e) {
-                        showToast(e.message);
+                const goTo = (page) => {
+                    currentPage.value = page;
+                    if (page === 'wrongbook') {
+                        loadWrongQuestions();
                     }
-                };
-                
-                const getLibrariesByGrade = (grade) => {
-                    return systemLibraries.value.filter(lib => lib.grade === grade);
                 };
                 
                 const toggleLibrary = (libId) => {
@@ -1144,69 +781,469 @@
                         showToast('词库选择已保存');
                         goTo('home');
                     } catch (e) {
-                        showToast(e.message);
+                        showToast(e.message || '保存失败');
                     }
                 };
                 
-                const updateProfile = async () => {
+                const startLearning = async () => {
                     try {
-                        await api('/records/profile', {
-                            method: 'PUT',
-                            body: JSON.stringify({ daily_goal: profile.daily_goal })
+                        const data = await api('/learning/today');
+                        todayTasks.value = data.today_tasks || [];
+                        if (todayTasks.value.length === 0) {
+                            showToast('今日任务已完成');
+                            return;
+                        }
+                        currentWordIndex.value = 0;
+                        loadWord();
+                    } catch (e) {
+                        showToast(e.message || '加载失败');
+                    }
+                };
+                
+                const loadWord = async () => {
+                    if (currentWordIndex.value >= todayTasks.value.length) {
+                        showToast('今日学习完成！');
+                        goTo('home');
+                        return;
+                    }
+                    // 立即重置状态，防止旧选项带着选中状态短暂显示
+                    currentWord.value = null;
+                    currentOptions.value = [];
+                    selectedOptionIndex.value = -1;
+                    selectedOption.value = null;
+                    showResult.value = false;
+                    const task = todayTasks.value[currentWordIndex.value];
+                    try {
+                        const res = await fetch(`${API_BASE}/learning/quiz-options/${task.word_id}`, {
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                         });
-                        showToast('设置已保存');
+                        const data = await res.json();
+                        currentWord.value = {
+                            ...data,
+                            taskType: task.type,       // 'new' or 'review'
+                            wrongQuestionId: task.id,  // review时的错题ID
+                        };
+                        currentOptions.value = data.options || [];
+                        setTimeout(playAudio, 300);
                     } catch (e) {
-                        showToast(e.message);
+                        showToast(e.message || '加载题目失败');
                     }
                 };
                 
-                const resetWrongQuestion = async (id) => {
+                // 全局音频实例，避免多个音频同时播放
+                let _currentAudio = null;
+                const playTTS = (text, onEnded) => {
+                    if (_currentAudio) {
+                        _currentAudio.pause();
+                        _currentAudio.onended = null;
+                        _currentAudio = null;
+                    }
+                    const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
+                    const audio = new Audio(url);
+                    _currentAudio = audio;
+                    if (onEnded) audio.onended = onEnded;
+                    audio.play().catch(() => {
+                        if (window.speechSynthesis) {
+                            window.speechSynthesis.cancel();
+                            const u = new SpeechSynthesisUtterance(text);
+                            u.lang = 'en-US'; u.rate = 0.85;
+                            if (onEnded) u.onend = onEnded;
+                            window.speechSynthesis.speak(u);
+                        }
+                    });
+                };
+
+                const playAudio = () => {
+                    if (!currentWord.value) return;
+                    playTTS(currentWord.value.word);
+                };
+
+
+                // 选项按钮样式：未选时全部灰色，选后才显示对错颜色
+                const optionStyle = (option, idx) => {
+                    if (selectedOptionIndex.value === -1) {
+                        // 未选任何选项：全部默认样式
+                        return 'background:#f9fafb;border-color:#e5e7eb;color:#374151;';
+                    }
+                    if (selectedOptionIndex.value === idx) {
+                        // 被点击的选项：对了绿，错了红
+                        return option.correct
+                            ? 'background:#22c55e;color:white;border-color:#22c55e;'
+                            : 'background:#ef4444;color:white;border-color:#ef4444;';
+                    }
+                    if (option.correct) {
+                        // 选错后，高亮正确答案
+                        return 'background:#22c55e;color:white;border-color:#22c55e;';
+                    }
+                    // 其他未被选中的选项：变灰
+                    return 'background:#f9fafb;border-color:#e5e7eb;color:#9ca3af;';
+                };
+
+                const handleOptionClick = async (option, idx) => {
+                    if (selectedOptionIndex.value !== -1) return;
+                    selectedOptionIndex.value = idx;
+                    selectedOption.value = option;
+                    
+                    setTimeout(async () => {
+                        try {
+                            let data;
+                            if (currentWord.value.taskType === 'review') {
+                                // 复习题：调用 /learning/review 更新记忆曲线
+                                // 先判断用户答案是否正确
+                                const isAnsCorrect = option.correct;
+                                const params = new URLSearchParams({
+                                    wrong_question_id: currentWord.value.wrongQuestionId,
+                                    score: isAnsCorrect ? 100 : 0
+                                });
+                                const result = await fetch(`${API_BASE}/learning/review?${params}`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                });
+                                data = await result.json();
+                                data.is_correct = isAnsCorrect;
+                            } else {
+                                // 新词：调用 /learning/submit-quiz
+                                const params = new URLSearchParams({
+                                    word_id: currentWord.value.word_id,
+                                    selected_meaning: option.text,
+                                    pronunciation_score: 80
+                                });
+                                const result = await fetch(`${API_BASE}/learning/submit-quiz?${params}`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                });
+                                data = await result.json();
+                                if (data.added_to_wrong_book) {
+                                    setTimeout(() => showToast('已加入错题本，可稍后复习'), 500);
+                                }
+                            }
+                            isCorrect.value = data.is_correct;
+                            lastScore.value = data.total_score || 0;
+                            showResult.value = true;
+                            // 只自动播放单词发音（用户已有点击手势）
+                            setTimeout(() => playTTS(currentWord.value && currentWord.value.word), 300);
+                            // 连击计数
+                            if (data.is_correct) {
+                                comboCount.value++;
+                                if (comboCount.value >= 3 && comboCount.value % 3 === 0) {
+                                    setTimeout(() => showToast(`🔥 ${comboCount.value} 连击！太棒了！`), 300);
+                                }
+                            } else {
+                                comboCount.value = 0;
+                            }
+                            // 复习题特殊提示
+                            if (currentWord.value.taskType === 'review' && data.is_correct) {
+                                const nextDate = data.next_review_date;
+                                if (nextDate) {
+                                    setTimeout(() => showToast(`✓ 复习完成，下次复习: ${nextDate}`), 500);
+                                }
+                            }
+                            // 不再自动跳转，用户需手动点击"下一题"按钮
+                        } catch (e) {
+                            console.error('提交失败:', e);
+                            showToast('提交失败');
+                        }
+                    }, 300);
+                };
+
+                // 日历分组计算属性
+                const calendarGroups = computed(() => {
+                    const groups = {};
+                    for (const q of wrongQuestions.value) {
+                        if (!q.next_review_date) continue;
+                        if (!groups[q.next_review_date]) groups[q.next_review_date] = [];
+                        groups[q.next_review_date].push(q);
+                    }
+                    // 按日期排序
+                    return Object.fromEntries(Object.entries(groups).sort(([a],[b]) => a.localeCompare(b)));
+                });
+                
+                const nextWord = () => {
+                    currentWordIndex.value++;
+                    selectedOptionIndex.value = -1;
+                    selectedOption.value = null;
+                    if (currentWordIndex.value >= todayTasks.value.length) {
+                        showToast('今日学习完成！');
+                        goTo('home');
+                        loadData();
+                    } else {
+                        loadWord();
+                    }
+                };
+                
+                const signIn = async () => {
                     try {
-                        await api(`/wrong-questions/reset/${id}`, { method: 'POST' });
-                        showToast('已重置复习进度');
-                        await loadWrongQuestions();
+                        const data = await api('/learning/signin', { method: 'POST' });
+                        showToast(`签到成功，+${data.bonus_score}积分`);
+                        await loadData();
                     } catch (e) {
-                        showToast(e.message);
+                        showToast(e.message || '签到失败');
                     }
                 };
-                
+
+                // 朗读例句（调用后端Edge TTS接口）
+                const playExampleSentence = async (sentence) => {
+                    if (!sentence) return;
+                    try {
+                        const resp = await fetch(`/api/tts?text=${encodeURIComponent(sentence)}`);
+                        if (!resp.ok) throw new Error('TTS failed');
+                        const blob = await resp.blob();
+                        const url = URL.createObjectURL(blob);
+                        const audio = new Audio(url);
+                        audio.onended = () => URL.revokeObjectURL(url);
+                        audio.onerror = () => URL.revokeObjectURL(url);
+                        // 不await，避免手势限制阻塞
+                        audio.play().catch(() => {
+                            // 播放失败时回退到Web Speech
+                            if (window.speechSynthesis) {
+                                window.speechSynthesis.cancel();
+                                const utter = new SpeechSynthesisUtterance(sentence);
+                                utter.lang = 'en-US';
+                                utter.rate = 0.9;
+                                window.speechSynthesis.speak(utter);
+                            }
+                        });
+                    } catch (e) {
+                        // 回退：Web Speech API
+                        if (window.speechSynthesis) {
+                            window.speechSynthesis.cancel();
+                            const utter = new SpeechSynthesisUtterance(sentence);
+                            utter.lang = 'en-US';
+                            utter.rate = 0.9;
+                            window.speechSynthesis.speak(utter);
+                        }
+                    }
+                };
+
+                // 例句中高亮单词
+                const highlightWord = (sentence, word, isCorrect) => {
+                    if (!sentence || !word) return sentence || '';
+                    const colorClass = isCorrect ? 'example-highlight' : 'example-highlight wrong';
+                    // 不区分大小写替换第一个匹配
+                    const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i');
+                    return sentence.replace(regex, `<span class="${colorClass}">$1</span>`);
+                };
+
+                const playWrongQuestion = async (q) => {
+                    playTTS(q.word);
+                };
+
                 const deleteWrongQuestion = async (id) => {
+                    if (!confirm('确定要删除这道错题吗？')) return;
                     try {
                         await api(`/wrong-questions/${id}`, { method: 'DELETE' });
-                        showToast('已从错题本删除');
+                        showToast('已删除');
                         await loadWrongQuestions();
                     } catch (e) {
-                        showToast(e.message);
+                        showToast(e.message || '删除失败');
                     }
                 };
                 
+
+                // ============ 词族记忆 ============
+                const wgDetailGroup = ref(null);
+
+                const wgPlayWord = (word) => {
+                    playTTS(word);
+                };
+
+                const wgHighlight = (sentence, word) => {
+                    if (!sentence || !word) return sentence || '';
+                    const r = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i');
+                    return sentence.replace(r, '<span style="color:#2563eb;font-weight:700;">$1</span>');
+                };
+
+                // 词族数据（词根/主题分组，包含例句从数据库获取后填入）
+                const wordGroups = ref([
+                    {
+                        id: 'colors', name: '颜色家族', emoji: '🎨',
+                        color: 'linear-gradient(135deg,#fee2e2,#fce7f3)',
+                        desc: '7个基础颜色词，日常最常用',
+                        rootTip: '颜色词大多直接记，但注意 orange 也是"橙子"，red 也做名词。',
+                        words: [
+                            {word:'red', phonetic:'/red/', meaning:'红色的', rootPart:'', example_sentence:'My favorite color is red.', example_cn:'我最喜欢的颜色是红色。'},
+                            {word:'yellow', phonetic:'/ˈjeləʊ/', meaning:'黄色的', rootPart:'', example_sentence:'The sunflower is yellow and bright.', example_cn:'向日葵是明亮的黄色。'},
+                            {word:'blue', phonetic:'/bluː/', meaning:'蓝色的', rootPart:'', example_sentence:'The sky is blue today.', example_cn:'今天天空是蓝色的。'},
+                            {word:'green', phonetic:'/ɡriːn/', meaning:'绿色的', rootPart:'', example_sentence:'The grass is green in spring.', example_cn:'春天草地是绿色的。'},
+                            {word:'white', phonetic:'/waɪt/', meaning:'白色的', rootPart:'', example_sentence:'The snow is white and cold.', example_cn:'雪是白色且冰冷的。'},
+                            {word:'black', phonetic:'/blæk/', meaning:'黑色的', rootPart:'', example_sentence:'The night sky is black.', example_cn:'夜空是黑色的。'},
+                            {word:'orange', phonetic:'/ˈɒrɪndʒ/', meaning:'橙色的；橙子', rootPart:'', example_sentence:'She wore an orange dress.', example_cn:'她穿了一件橙色的裙子。'},
+                        ]
+                    },
+                    {
+                        id: 'family', name: '家庭成员族', emoji: '👨‍👩‍👧‍👦',
+                        color: 'linear-gradient(135deg,#fef3c7,#fde68a)',
+                        desc: '亲属关系词，注意 -er/-or 后缀',
+                        rootTip: 'father / mother / brother 都有 -ther 结尾，sister / teacher / eraser 都有 -er/-ar，表示"人"。',
+                        words: [
+                            {word:'father', phonetic:'/ˈfɑːðər/', meaning:'父亲', rootPart:'-ther', example_sentence:'My father works hard every day.', example_cn:'我的父亲每天努力工作。'},
+                            {word:'mother', phonetic:'/ˈmʌðər/', meaning:'母亲', rootPart:'-ther', example_sentence:'My mother cooks delicious food.', example_cn:'我的妈妈做美味的食物。'},
+                            {word:'brother', phonetic:'/ˈbrʌðər/', meaning:'兄弟', rootPart:'-ther', example_sentence:'My brother is taller than me.', example_cn:'我的哥哥比我高。'},
+                            {word:'sister', phonetic:'/ˈsɪstər/', meaning:'姐妹', rootPart:'-er', example_sentence:'My sister likes to sing.', example_cn:'我的姐姐喜欢唱歌。'},
+                            {word:'family', phonetic:'/ˈfæməli/', meaning:'家庭；家人', rootPart:'fami-', example_sentence:'My family has five members.', example_cn:'我家有五口人。'},
+                        ]
+                    },
+                    {
+                        id: 'week', name: '一周七天族', emoji: '📅',
+                        color: 'linear-gradient(135deg,#e0f2fe,#bae6fd)',
+                        desc: '7天均以 -day 结尾，轻松记忆',
+                        rootTip: 'Mon(月亮) Tue(战神Tiw) Wed(奥丁Woden) Thu(雷神Thor) Fri(爱神Frigg) Sat(土星Saturn) Sun(太阳) — 全是北欧神话！',
+                        words: [
+                            {word:'Monday', phonetic:'/ˈmʌndeɪ/', meaning:'星期一', rootPart:'Moon+day', example_sentence:'Monday is the start of the week.', example_cn:'星期一是一周的开始。'},
+                            {word:'Tuesday', phonetic:'/ˈtjuːzdeɪ/', meaning:'星期二', rootPart:'-day', example_sentence:'I play sports on Tuesday.', example_cn:'我在星期二打球运动。'},
+                            {word:'Wednesday', phonetic:'/ˈwenzdeɪ/', meaning:'星期三', rootPart:'-day', example_sentence:'She has piano class on Wednesday.', example_cn:'她星期三有钢琴课。'},
+                            {word:'Thursday', phonetic:'/ˈθɜːzdeɪ/', meaning:'星期四', rootPart:'Thor+day', example_sentence:'We have a test on Thursday.', example_cn:'我们星期四有考试。'},
+                            {word:'Friday', phonetic:'/ˈfraɪdeɪ/', meaning:'星期五', rootPart:'-day', example_sentence:'Friday is almost the weekend.', example_cn:'星期五快到周末了。'},
+                            {word:'Saturday', phonetic:'/ˈsætədeɪ/', meaning:'星期六', rootPart:'Saturn+day', example_sentence:'Saturday is a free day.', example_cn:'星期六是自由的一天。'},
+                            {word:'Sunday', phonetic:'/ˈsʌndeɪ/', meaning:'星期日', rootPart:'Sun+day', example_sentence:'I rest on Sunday.', example_cn:'我星期日休息。'},
+                        ]
+                    },
+                    {
+                        id: 'school_subjects', name: '学科词族', emoji: '🔬',
+                        color: 'linear-gradient(135deg,#f3e8ff,#e9d5ff)',
+                        desc: 'science → scientific，词根 -ology 表"学科"',
+                        rootTip: '-ology = "学科/学问"：biology(bio生命), geography(geo大地), technology(techno技术)。science → scientific 加后缀 -ific。',
+                        words: [
+                            {word:'science', phonetic:'/ˈsaɪəns/', meaning:'科学', rootPart:'sci-知道', example_sentence:'Science is an interesting subject.', example_cn:'科学是一门有趣的学科。'},
+                            {word:'scientific', phonetic:'/ˌsaɪənˈtɪfɪk/', meaning:'科学的', rootPart:'sci-+ific', example_sentence:'We need a scientific approach.', example_cn:'我们需要科学的方法。'},
+                            {word:'biology', phonetic:'/baɪˈɒlədʒi/', meaning:'生物学', rootPart:'bio-+logy', example_sentence:'Biology studies living things.', example_cn:'生物学研究生物。'},
+                            {word:'geography', phonetic:'/dʒiˈɒɡrəfi/', meaning:'地理', rootPart:'geo-+graphy', example_sentence:'Geography tells us about the Earth.', example_cn:'地理告诉我们关于地球的知识。'},
+                            {word:'technology', phonetic:'/tekˈnɒlədʒi/', meaning:'技术；科技', rootPart:'techno+logy', example_sentence:'Technology changes our life.', example_cn:'技术改变了我们的生活。'},
+                            {word:'history', phonetic:'/ˈhɪstri/', meaning:'历史', rootPart:'histor-', example_sentence:'History teaches us lessons.', example_cn:'历史给我们上了一课。'},
+                            {word:'music', phonetic:'/ˈmjuːzɪk/', meaning:'音乐', rootPart:'muse-', example_sentence:'Music makes me feel happy.', example_cn:'音乐让我感到快乐。'},
+                        ]
+                    },
+                    {
+                        id: 'edu_action', name: '学习动作族', emoji: '📖',
+                        color: 'linear-gradient(135deg,#dcfce7,#bbf7d0)',
+                        desc: 'practice/remember/understand — 学习相关动词',
+                        rootTip: 'remember ↔ forget 是反义词；understand = under(在下面)+stand(站)，"站在底下理解"；explain = ex(出)+plain(平，清楚)。',
+                        words: [
+                            {word:'practice', phonetic:'/ˈpræktɪs/', meaning:'练习；实践', rootPart:'pract-做', example_sentence:'She practiced piano for two hours.', example_cn:'她练了两小时钢琴。'},
+                            {word:'remember', phonetic:'/rɪˈmembər/', meaning:'记得；记住', rootPart:'re-+member', example_sentence:'He always remembers important things.', example_cn:'他总是记得重要的事情。'},
+                            {word:'forget', phonetic:'/fəˈɡet/', meaning:'忘记', rootPart:'for-+get', example_sentence:'We forget things when we are busy.', example_cn:'我们忙的时候会忘事。'},
+                            {word:'understand', phonetic:'/ˌʌndəˈstænd/', meaning:'理解；明白', rootPart:'under+stand', example_sentence:'I finally understand the problem.', example_cn:'我终于理解了这个问题。'},
+                            {word:'explain', phonetic:'/ɪkˈspleɪn/', meaning:'解释；说明', rootPart:'ex-+plain', example_sentence:'The teacher explains the lesson.', example_cn:'老师讲解课程。'},
+                        ]
+                    },
+                    {
+                        id: 'ing_hobbies', name: '-ing 兴趣爱好族', emoji: '🏊',
+                        color: 'linear-gradient(135deg,#fff7ed,#fed7aa)',
+                        desc: '动词加 -ing 变名词，表示活动/爱好',
+                        rootTip: 'swim→swimming, run→running 要双写末尾字母；shop→shopping 同理；read→reading, cook→cooking 直接加 -ing。',
+                        words: [
+                            {word:'swimming', phonetic:'/ˈswɪmɪŋ/', meaning:'游泳', rootPart:'swim+-ing', example_sentence:'Swimming is good for health.', example_cn:'游泳对健康有益。'},
+                            {word:'running', phonetic:'/ˈrʌnɪŋ/', meaning:'跑步', rootPart:'run+-ing', example_sentence:'She goes running every morning.', example_cn:'她每天早上跑步。'},
+                            {word:'reading', phonetic:'/ˈriːdɪŋ/', meaning:'阅读', rootPart:'read+-ing', example_sentence:'Reading books is my hobby.', example_cn:'读书是我的爱好。'},
+                            {word:'shopping', phonetic:'/ˈʃɒpɪŋ/', meaning:'购物', rootPart:'shop+-ing', example_sentence:'She went shopping on Saturday.', example_cn:'她周六去购物了。'},
+                            {word:'cooking', phonetic:'/ˈkʊkɪŋ/', meaning:'烹饪', rootPart:'cook+-ing', example_sentence:'Cooking is a life skill.', example_cn:'烹饪是一项生活技能。'},
+                        ]
+                    },
+                    {
+                        id: 'adj_tion', name: '-tion/-ation 名词族', emoji: '📝',
+                        color: 'linear-gradient(135deg,#f0fdf4,#d1fae5)',
+                        desc: '动词加 -tion/-ation 变成名词',
+                        rootTip: 'educate→education, pollute→pollution, populate→population, imagine→imagination — 动词去 e 加 -ation/-ion。',
+                        words: [
+                            {word:'education', phonetic:'/ˌedʒuˈkeɪʃn/', meaning:'教育', rootPart:'educate→-ion', example_sentence:'Education is the key to success.', example_cn:'教育是成功的关键。'},
+                            {word:'pollution', phonetic:'/pəˈluːʃn/', meaning:'污染', rootPart:'pollute→-ion', example_sentence:'Air pollution is a serious problem.', example_cn:'空气污染是严重问题。'},
+                            {word:'population', phonetic:'/ˌpɒpjuˈleɪʃn/', meaning:'人口', rootPart:'populate→-ion', example_sentence:'The population is growing fast.', example_cn:'人口增长很快。'},
+                            {word:'imagination', phonetic:'/ɪˌmædʒɪˈneɪʃn/', meaning:'想象力', rootPart:'imagine→-ation', example_sentence:'Children have rich imagination.', example_cn:'孩子们有丰富的想象力。'},
+                            {word:'civilization', phonetic:'/ˌsɪvəlaɪˈzeɪʃn/', meaning:'文明', rootPart:'civilize→-ation', example_sentence:'Ancient civilization fascinates me.', example_cn:'古代文明让我着迷。'},
+                        ]
+                    },
+                    {
+                        id: 'ity_suffix', name: '-ity 名词后缀族', emoji: '⭐',
+                        color: 'linear-gradient(135deg,#fef9c3,#fef08a)',
+                        desc: '形容词加 -ity 变为表示"性质/状态"的名词',
+                        rootTip: 'creative→creativity, capable→capability, responsible→responsibility, confident→confidence。记住：形+ity/ity = 名词。',
+                        words: [
+                            {word:'creativity', phonetic:'/ˌkriːeɪˈtɪvəti/', meaning:'创造力', rootPart:'creative+-ity', example_sentence:'Creativity is valued in design.', example_cn:'创造力在设计中很有价值。'},
+                            {word:'capability', phonetic:'/ˌkeɪpəˈbɪləti/', meaning:'能力；才能', rootPart:'capable+-ity', example_sentence:'She showed great capability.', example_cn:'她展示了很强的能力。'},
+                            {word:'responsibility', phonetic:'/rɪˌspɒnsəˈbɪləti/', meaning:'责任；职责', rootPart:'responsible+-ity', example_sentence:'Taking responsibility is important.', example_cn:'承担责任很重要。'},
+                            {word:'confidence', phonetic:'/ˈkɒnfɪdəns/', meaning:'信心；自信', rootPart:'con-+fid-相信', example_sentence:'She spoke with confidence.', example_cn:'她自信地讲话。'},
+                            {word:'anxiety', phonetic:'/æŋˈzaɪəti/', meaning:'焦虑；担忧', rootPart:'anxious+-ty', example_sentence:'Exam anxiety is common.', example_cn:'考试焦虑很常见。'},
+                        ]
+                    },
+                    {
+                        id: 'con_prefix', name: 'con- 前缀族（共同）', emoji: '🤝',
+                        color: 'linear-gradient(135deg,#ede9fe,#ddd6fe)',
+                        desc: 'con-/com- = "共同、一起、加强"',
+                        rootTip: 'con- = "共同/加强"：confidence(共同信任)，communicate(共同交流)，consequence(共同发生的结果)，contribute(共同给予)，commit(共同做)。',
+                        words: [
+                            {word:'confidence', phonetic:'/ˈkɒnfɪdəns/', meaning:'信心；自信', rootPart:'con-+fid信任', example_sentence:'She spoke with great confidence.', example_cn:'她非常自信地说话。'},
+                            {word:'communicate', phonetic:'/kəˈmjuːnɪkeɪt/', meaning:'沟通；传达', rootPart:'com-+mun共同', example_sentence:'We need to communicate better.', example_cn:'我们需要更好地沟通。'},
+                            {word:'consequence', phonetic:'/ˈkɒnsɪkwəns/', meaning:'结果；后果', rootPart:'con-+sequ跟随', example_sentence:'Think about the consequences.', example_cn:'想想后果。'},
+                            {word:'contribute', phonetic:'/kənˈtrɪbjuːt/', meaning:'贡献；捐献', rootPart:'con-+tribute给', example_sentence:'Everyone should contribute.', example_cn:'每个人都应该做出贡献。'},
+                            {word:'considerable', phonetic:'/kənˈsɪdərəbl/', meaning:'相当大的', rootPart:'con-+sider+able', example_sentence:'There is considerable improvement.', example_cn:'有相当大的进步。'},
+                            {word:'commit', phonetic:'/kəˈmɪt/', meaning:'承诺；犯（罪）', rootPart:'com-+mit送', example_sentence:'He committed to the project.', example_cn:'他承诺了这个项目。'},
+                        ]
+                    },
+                    {
+                        id: 'achieve_succeed', name: '成功进步族', emoji: '🏆',
+                        color: 'linear-gradient(135deg,#fef9c3,#fde68a)',
+                        desc: 'achieve/succeed/develop/improve — 进步发展类动词',
+                        rootTip: 'achieve(→achievement), succeed(→success→successful), develop(→development), improve(→improvement) — 动词后缀变名词常见：-ment/-tion/-ence。',
+                        words: [
+                            {word:'achieve', phonetic:'/əˈtʃiːv/', meaning:'实现；取得', rootPart:'a-+chieve', example_sentence:'She achieved great success.', example_cn:'她取得了巨大成功。'},
+                            {word:'succeed', phonetic:'/səkˈsiːd/', meaning:'成功', rootPart:'suc-+ceed走', example_sentence:'Work hard and you will succeed.', example_cn:'努力工作你就会成功。'},
+                            {word:'develop', phonetic:'/dɪˈveləp/', meaning:'发展；开发', rootPart:'de-+velop', example_sentence:'The city developed quickly.', example_cn:'这座城市发展很快。'},
+                            {word:'improve', phonetic:'/ɪmˈpruːv/', meaning:'改善；提高', rootPart:'im-+prove', example_sentence:'She improved her English.', example_cn:'她提高了她的英语。'},
+                            {word:'accomplish', phonetic:'/əˈkɒmplɪʃ/', meaning:'完成；实现', rootPart:'ac-+com+pli', example_sentence:'He accomplished his goal.', example_cn:'他实现了他的目标。'},
+                            {word:'encourage', phonetic:'/ɪnˈkʌrɪdʒ/', meaning:'鼓励', rootPart:'en-+courage', example_sentence:'Teachers encourage students to read.', example_cn:'老师鼓励学生阅读。'},
+                        ]
+                    },
+                    {
+                        id: 'ap_prefix', name: 'a-/ap- 前缀族', emoji: '🎯',
+                        color: 'linear-gradient(135deg,#fce7f3,#fbcfe8)',
+                        desc: 'a-/ap-/ad- = "朝向、加强" 含义',
+                        rootTip: 'ap- 是 ad-(朝向) 的变体：appreciate(朝向价值=欣赏), appropriate(朝向合适=恰当的), approximately(朝向大约=大约), appreciate/approve 都含 ap-。',
+                        words: [
+                            {word:'appreciate', phonetic:'/əˈpriːʃieɪt/', meaning:'欣赏；感激', rootPart:'ap-+preci价值', example_sentence:'I appreciate your help very much.', example_cn:'我非常感激你的帮助。'},
+                            {word:'appropriate', phonetic:'/əˈprəʊpriət/', meaning:'合适的；恰当的', rootPart:'ap-+propri自己的', example_sentence:'Choose appropriate words.', example_cn:'选择恰当的词语。'},
+                            {word:'approximately', phonetic:'/əˈprɒksɪmətli/', meaning:'大约；近似地', rootPart:'ap-+proxim接近', example_sentence:'It takes approximately one hour.', example_cn:'大约需要一小时。'},
+                            {word:'admire', phonetic:'/ədˈmaɪər/', meaning:'钦佩；欣赏', rootPart:'ad-+mire惊奇', example_sentence:'I admire her courage.', example_cn:'我钦佩她的勇气。'},
+                            {word:'adequate', phonetic:'/ˈædɪkwət/', meaning:'足够的；适当的', rootPart:'ad-+equ相等', example_sentence:'The food supply is adequate.', example_cn:'食物供应足够。'},
+                        ]
+                    },
+                    {
+                        id: 'env_society', name: '环境与社会族', emoji: '🌍',
+                        color: 'linear-gradient(135deg,#d1fae5,#a7f3d0)',
+                        desc: 'environment/government/opportunity — 社会话题高频词',
+                        rootTip: '-ment 后缀表示结果/状态：govern(统治)→government, environ(周围)→environment。opportunity = op+port(港口)+unity，意为"进港机会"。',
+                        words: [
+                            {word:'environment', phonetic:'/ɪnˈvaɪərənmənt/', meaning:'环境', rootPart:'environ+-ment', example_sentence:'We must protect the environment.', example_cn:'我们必须保护环境。'},
+                            {word:'government', phonetic:'/ˈɡʌvənmənt/', meaning:'政府', rootPart:'govern+-ment', example_sentence:'The government made new policies.', example_cn:'政府制定了新政策。'},
+                            {word:'opportunity', phonetic:'/ˌɒpəˈtjuːnəti/', meaning:'机会；时机', rootPart:'op+port+unity', example_sentence:'Seize every opportunity.', example_cn:'抓住每一个机会。'},
+                            {word:'pollution', phonetic:'/pəˈluːʃn/', meaning:'污染', rootPart:'pollute→-ion', example_sentence:'Reduce pollution to save the Earth.', example_cn:'减少污染来拯救地球。'},
+                            {word:'recycling', phonetic:'/ˌriːˈsaɪklɪŋ/', meaning:'回收利用', rootPart:'re-+cycle', example_sentence:'Recycling helps the environment.', example_cn:'回收利用有助于环境。'},
+                            {word:'protect', phonetic:'/prəˈtekt/', meaning:'保护', rootPart:'pro-+tect覆盖', example_sentence:'We should protect wildlife.', example_cn:'我们应该保护野生动物。'},
+                        ]
+                    },
+                ]);
+
                 onMounted(async () => {
                     const token = localStorage.getItem('token');
                     if (token) {
                         try {
                             currentUser.value = await api('/auth/me');
                             await loadData();
-                        } catch (e) {
-                            localStorage.removeItem('token');
+                        } catch (e) { 
+                            localStorage.removeItem('token'); 
                         }
                     }
                 });
                 
                 return {
-                    currentUser, currentPage, showRegister,
-                    loginForm, registerForm,
-                    profile, todayData, stats, dailyRecords, systemLibraries,
-                    wrongQuestions, wrongStats,
-                    selectedLibraries, learningTask, showMeaning, pronunciationScore, meaningScore,
-                    toast,
-                    // 自定义词库
-                    customLibraries, showCreateLibrary, editingLibrary, libraryForm,
-                    parsedWordCount, previewWords,
-                    closeLibraryModal, editLibrary, saveLibrary, deleteLibrary,
-                    // 其他操作
-                    login, register, signOut, goTo, submitLearning, signIn,
-                    getLibrariesByGrade, toggleLibrary, saveLibrarySelection, updateProfile,
-                    resetWrongQuestion, deleteWrongQuestion
+                    currentUser, currentPage, showRegister, loginForm, registerForm,
+                    profile, todayData, stats, systemLibraries, selectedLibraries, toast,
+                    todayTasks, currentWordIndex, currentWord, currentOptions, selectedOption, showResult, isCorrect, lastScore,
+                    comboCount, todayStr,
+                    wrongQuestions, wrongbookTab, calendarGroups,
+                    login, register, signOut, goTo, signIn, toggleLibrary, saveLibrarySelection,
+                    startLearning, loadWord, playAudio, handleOptionClick, optionStyle, nextWord,
+                    loadWrongQuestions, playWrongQuestion, deleteWrongQuestion, highlightWord, playExampleSentence,
+                    wgDetailGroup, wordGroups, wgPlayWord, wgHighlight
                 };
             }
         }).mount('#app');
