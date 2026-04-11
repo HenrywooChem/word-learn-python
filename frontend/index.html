@@ -149,8 +149,8 @@
                     </div>
                     <div class="space-y-4">
                         <div>
-                            <label>用户名</label>
-                            <input v-model="loginForm.username" type="text" class="input" placeholder="请输入用户名">
+                            <label>用户名 / 手机号 / 邮箱</label>
+                            <input v-model="loginForm.username" type="text" class="input" placeholder="请输入用户名、手机号或邮箱">
                         </div>
                         <div>
                             <label>密码</label>
@@ -165,16 +165,36 @@
             </div>
             <!-- 注册弹窗 -->
             <div v-if="showRegister" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;">
-                <div class="card" style="width:100%;max-width:400px;">
+                <div class="card" style="width:100%;max-width:400px;max-height:90vh;overflow-y:auto;">
                     <h2 class="text-xl font-bold mb-4">注册新账号</h2>
                     <div class="space-y-3">
-                        <input v-model="registerForm.name" type="text" class="input" placeholder="姓名">
-                        <input v-model="registerForm.username" type="text" class="input" placeholder="用户名">
-                        <input v-model="registerForm.password" type="password" class="input" placeholder="密码">
-                        <select v-model="registerForm.role" class="input">
-                            <option value="child">孩子</option>
-                            <option value="parent">家长</option>
-                        </select>
+                        <div>
+                            <label>姓名 <span class="text-red-500">*</span></label>
+                            <input v-model="registerForm.name" type="text" class="input" placeholder="请输入姓名">
+                        </div>
+                        <div>
+                            <label>用户名</label>
+                            <input v-model="registerForm.username" type="text" class="input" placeholder="选填，不填将自动生成">
+                        </div>
+                        <div>
+                            <label>手机号</label>
+                            <input v-model="registerForm.phone" type="tel" class="input" placeholder="选填，可用于登录">
+                        </div>
+                        <div>
+                            <label>邮箱</label>
+                            <input v-model="registerForm.email" type="email" class="input" placeholder="选填，可用于登录">
+                        </div>
+                        <div>
+                            <label>密码 <span class="text-red-500">*</span></label>
+                            <input v-model="registerForm.password" type="password" class="input" placeholder="请输入密码（至少6位）">
+                        </div>
+                        <div>
+                            <label>角色</label>
+                            <select v-model="registerForm.role" class="input">
+                                <option value="child">孩子</option>
+                                <option value="parent">家长</option>
+                            </select>
+                        </div>
                         <div class="flex gap-2">
                             <button @click="showRegister = false" class="btn btn-outline">取消</button>
                             <button @click="register" class="btn btn-primary">注册</button>
@@ -190,12 +210,15 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="icon bg-gradient-to-br text-white">📚</div>
-                        <div>
+                        <div style="cursor:pointer;" @click="goTo('settings')">
                             <h1 class="font-bold">{{ currentUser.name }}</h1>
                             <p class="text-sm text-gray-500">积分: {{ profile.total_score }}</p>
                         </div>
                     </div>
-                    <button @click="signOut" style="background:none;border:none;font-size:24px;cursor:pointer;">🚪</button>
+                    <div class="flex items-center gap-2">
+                        <button @click="goTo('settings')" style="background:none;border:none;font-size:20px;cursor:pointer;">⚙️</button>
+                        <button @click="signOut" style="background:none;border:none;font-size:24px;cursor:pointer;">🚪</button>
+                    </div>
                 </div>
             </header>
             <main class="container">
@@ -230,6 +253,21 @@
                         <p class="text-sm text-gray-500 mt-2">{{ systemLibraries.length }} 个词库</p>
                     </button>
                 </div>
+                <!-- 每日目标设置 -->
+                <div class="card" style="margin-top:12px;padding:16px;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold" style="font-size:15px;">每日目标</h3>
+                            <p class="text-sm text-gray-500 mt-1">每天背诵 {{ editingDailyGoal }} 个单词</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button @click="adjustDailyGoal(-5)" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:700;cursor:pointer;color:#374151;">−</button>
+                            <span style="font-size:22px;font-weight:700;color:#3b82f6;min-width:36px;text-align:center;">{{ editingDailyGoal }}</span>
+                            <button @click="adjustDailyGoal(5)" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 14px;font-size:18px;font-weight:700;cursor:pointer;color:#374151;">+</button>
+                            <button v-if="editingDailyGoal !== profile.daily_goal" @click="saveDailyGoal" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-left:4px;">保存</button>
+                        </div>
+                    </div>
+                </div>
                 <button @click="goTo('wordgroup')" class="card" style="margin-top:12px;padding:16px;text-align:left;cursor:pointer;border:none;width:100%;display:flex;align-items:center;gap:14px;">
                     <div class="icon mb-0" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);font-size:24px;flex-shrink:0;">🌿</div>
                     <div>
@@ -258,6 +296,77 @@
             </nav>
         </div>
         
+        <!-- 设置页 -->
+        <div v-if="currentUser && currentPage === 'settings'" class="page active">
+            <header class="header">
+                <div class="flex items-center">
+                    <button @click="goTo('home')" style="background:none;border:none;font-size:20px;cursor:pointer;">←</button>
+                    <h2 class="font-bold" style="margin-left:8px;">个人设置</h2>
+                </div>
+            </header>
+            <main class="container" style="margin-top:16px;">
+                <!-- 用户信息卡片 -->
+                <div class="card" style="text-align:center;padding:24px;">
+                    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;font-size:28px;color:white;">👤</div>
+                    <h2 class="font-bold text-lg" style="margin-top:12px;">{{ currentUser.name }}</h2>
+                    <p class="text-sm text-gray-500">@{{ currentUser.username }}</p>
+                    <p class="text-sm text-gray-500" style="margin-top:4px;">{{ currentUser.phone ? '📱 ' + currentUser.phone : '' }}</p>
+                    <p class="text-sm text-gray-500">{{ currentUser.email ? '📧 ' + currentUser.email : '' }}</p>
+                </div>
+
+                <!-- 修改用户名 -->
+                <div class="card" style="margin-top:12px;padding:16px;">
+                    <h3 class="font-bold" style="font-size:15px;">修改用户名</h3>
+                    <p class="text-sm text-gray-500 mt-1">当前用户名: {{ currentUser.username }}</p>
+                    <div class="flex gap-2 mt-4">
+                        <input v-model="settingsForm.new_username" type="text" class="input" placeholder="输入新用户名">
+                        <button @click="changeUsername" style="background:#3b82f6;color:white;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;">保存</button>
+                    </div>
+                </div>
+
+                <!-- 修改手机号 -->
+                <div class="card" style="margin-top:12px;padding:16px;">
+                    <h3 class="font-bold" style="font-size:15px;">修改手机号</h3>
+                    <p class="text-sm text-gray-500 mt-1">当前手机号: {{ currentUser.phone || '未绑定' }}</p>
+                    <div class="flex gap-2 mt-4">
+                        <input v-model="settingsForm.new_phone" type="tel" class="input" placeholder="输入新手机号（留空解绑）">
+                        <button @click="changePhone" style="background:#3b82f6;color:white;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;">保存</button>
+                    </div>
+                </div>
+
+                <!-- 修改邮箱 -->
+                <div class="card" style="margin-top:12px;padding:16px;">
+                    <h3 class="font-bold" style="font-size:15px;">修改邮箱</h3>
+                    <p class="text-sm text-gray-500 mt-1">当前邮箱: {{ currentUser.email || '未绑定' }}</p>
+                    <div class="flex gap-2 mt-4">
+                        <input v-model="settingsForm.new_email" type="email" class="input" placeholder="输入新邮箱（留空解绑）">
+                        <button @click="changeEmail" style="background:#3b82f6;color:white;border:none;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;">保存</button>
+                    </div>
+                </div>
+
+                <!-- 修改密码 -->
+                <div class="card" style="margin-top:12px;padding:16px;">
+                    <h3 class="font-bold" style="font-size:15px;">修改密码</h3>
+                    <div class="space-y-3 mt-4">
+                        <div>
+                            <label>旧密码</label>
+                            <input v-model="settingsForm.old_password" type="password" class="input" placeholder="请输入旧密码">
+                        </div>
+                        <div>
+                            <label>新密码</label>
+                            <input v-model="settingsForm.new_password" type="password" class="input" placeholder="请输入新密码（至少6位）">
+                        </div>
+                        <button @click="changePassword" class="btn btn-primary">修改密码</button>
+                    </div>
+                </div>
+
+                <!-- 退出登录 -->
+                <button @click="signOut" class="btn btn-outline" style="margin-top:20px;color:#ef4444;border-color:#fca5a5;">
+                    🚪 退出登录
+                </button>
+            </main>
+        </div>
+
         <!-- 学习页 -->
         <div v-if="currentUser && currentPage === 'learning'" class="page active">
             <header class="header">
@@ -315,6 +424,12 @@
                         </span>
                     </div>
                     <h3 class="text-2xl font-bold mb-2">{{ isCorrect ? '回答正确！' : '回答错误' }}</h3>
+                    <!-- 积分变动 -->
+                    <div v-if="lastScoreChange !== null" style="margin-bottom:6px;">
+                        <span :style="{fontSize:'16px',fontWeight:700,color: lastScoreChange > 0 ? '#22c55e' : '#ef4444'}">
+                            {{ lastScoreChange > 0 ? '+' : '' }}{{ lastScoreChange }} 积分
+                        </span>
+                    </div>
                     <!-- 单词 + 词性 + 正确答案 -->
                     <div v-if="currentWord" style="margin-bottom:10px;">
                         <div class="flex items-center justify-center gap-2 flex-wrap">
@@ -445,6 +560,9 @@
                                     错误 {{ q.wrong_count }} 次
                                 </span>
                                 <span class="wrong-count-badge badge-ok">正确 {{ q.correct_count }} 次</span>
+                                <span class="wrong-count-badge" :style="{background: q.familiarity >= 0.8 ? '#dcfce7' : q.familiarity >= 0.5 ? '#fef3c7' : '#fee2e2', color: q.familiarity >= 0.8 ? '#16a34a' : q.familiarity >= 0.5 ? '#d97706' : '#dc2626'}">
+                                    熟悉度 {{ (q.familiarity || 1).toFixed(1) }}
+                                </span>
                                 <span style="font-size:11px;color:#9ca3af;">下次复习: {{ q.next_review_date }}</span>
                             </div>
                             <!-- 例句 -->
@@ -612,8 +730,9 @@
                 const currentPage = ref('home');
                 const showRegister = ref(false);
                 const loginForm = reactive({ username: '', password: '' });
-                const registerForm = reactive({ name: '', username: '', password: '', role: 'child' });
+                const registerForm = reactive({ name: '', username: '', phone: '', email: '', password: '', role: 'child' });
                 const profile = reactive({ total_score: 0, daily_goal: 10 });
+                const settingsForm = reactive({ new_username: '', new_phone: '', new_email: '', old_password: '', new_password: '' });
                 const todayData = reactive({ new_words_learned: 0, review_completed: 0, daily_goal: 10, remaining_new: 0, remaining_review: 0, signed_in: false });
                 const stats = reactive({ streak_days: 0, total_words: 0 });
                 const systemLibraries = ref([]);
@@ -630,6 +749,9 @@
                 const showResult = ref(false);
                 const isCorrect = ref(false);
                 const lastScore = ref(0);
+                const lastScoreChange = ref(null);
+                // 每日目标编辑
+                const editingDailyGoal = ref(10);
                 // 连击
                 const comboCount = ref(0);
                 // 今日日期字符串（本地时区）
@@ -702,6 +824,65 @@
                     currentPage.value = 'home';
                 };
                 
+                // 设置相关方法
+                const changeUsername = async () => {
+                    if (!settingsForm.new_username.trim()) {
+                        showToast('请输入新用户名');
+                        return;
+                    }
+                    try {
+                        const data = await api('/auth/change-username', { method: 'PUT', body: JSON.stringify({ new_username: settingsForm.new_username }) });
+                        currentUser.value = data.user;
+                        settingsForm.new_username = '';
+                        showToast('用户名修改成功');
+                    } catch (e) {
+                        showToast(e.message || '修改失败');
+                    }
+                };
+
+                const changePhone = async () => {
+                    try {
+                        const phone = settingsForm.new_phone.trim() || null;
+                        const data = await api('/auth/change-phone', { method: 'PUT', body: JSON.stringify({ new_phone: phone }) });
+                        currentUser.value = data.user;
+                        settingsForm.new_phone = '';
+                        showToast('手机号修改成功');
+                    } catch (e) {
+                        showToast(e.message || '修改失败');
+                    }
+                };
+
+                const changeEmail = async () => {
+                    try {
+                        const email = settingsForm.new_email.trim() || null;
+                        const data = await api('/auth/change-email', { method: 'PUT', body: JSON.stringify({ new_email: email }) });
+                        currentUser.value = data.user;
+                        settingsForm.new_email = '';
+                        showToast('邮箱修改成功');
+                    } catch (e) {
+                        showToast(e.message || '修改失败');
+                    }
+                };
+
+                const changePassword = async () => {
+                    if (!settingsForm.old_password || !settingsForm.new_password) {
+                        showToast('请填写旧密码和新密码');
+                        return;
+                    }
+                    if (settingsForm.new_password.length < 6) {
+                        showToast('新密码长度不能少于6位');
+                        return;
+                    }
+                    try {
+                        await api('/auth/change-password', { method: 'PUT', body: JSON.stringify({ old_password: settingsForm.old_password, new_password: settingsForm.new_password }) });
+                        settingsForm.old_password = '';
+                        settingsForm.new_password = '';
+                        showToast('密码修改成功');
+                    } catch (e) {
+                        showToast(e.message || '修改失败');
+                    }
+                };
+                
                 const loadData = async () => {
                     try {
                         const [profileData, todayDataRes, statsRes, libsRes] = await Promise.all([
@@ -714,6 +895,7 @@
                         Object.assign(todayData, todayDataRes);
                         Object.assign(stats, statsRes);
                         systemLibraries.value = libsRes || [];
+                        editingDailyGoal.value = profileData.daily_goal || 10;
                     } catch (e) {
                         console.error(e);
                     }
@@ -812,6 +994,7 @@
                     selectedOptionIndex.value = -1;
                     selectedOption.value = null;
                     showResult.value = false;
+                    lastScoreChange.value = null;
                     const task = todayTasks.value[currentWordIndex.value];
                     try {
                         const res = await fetch(`${API_BASE}/learning/quiz-options/${task.word_id}`, {
@@ -919,6 +1102,11 @@
                             }
                             isCorrect.value = data.is_correct;
                             lastScore.value = data.total_score || 0;
+                            // 更新积分显示
+                            lastScoreChange.value = data.score_change || (data.is_correct ? 1 : -0.5);
+                            // 更新前端显示的总积分
+                            const newTotal = data.user_total_score || (profile.total_score + lastScoreChange.value);
+                            profile.total_score = newTotal;
                             showResult.value = true;
                             // 先播放单词发音，然后自动播放例句
                             const wordToPlay = currentWord.value && currentWord.value.word;
@@ -990,6 +1178,27 @@
                     }
                 };
                 
+                const adjustDailyGoal = (delta) => {
+                    const newVal = editingDailyGoal.value + delta;
+                    if (newVal >= 5 && newVal <= 100) {
+                        editingDailyGoal.value = newVal;
+                    }
+                };
+                
+                const saveDailyGoal = async () => {
+                    try {
+                        await api('/records/profile', {
+                            method: 'PUT',
+                            body: JSON.stringify({ daily_goal: editingDailyGoal.value })
+                        });
+                        profile.daily_goal = editingDailyGoal.value;
+                        todayData.daily_goal = editingDailyGoal.value;
+                        showToast(`每日目标已设为 ${editingDailyGoal.value} 个单词`);
+                    } catch (e) {
+                        showToast(e.message || '保存失败');
+                    }
+                };
+
                 const signIn = async () => {
                     try {
                         const data = await api('/learning/signin', { method: 'POST' });
@@ -1255,12 +1464,16 @@
                 
                 return {
                     currentUser, currentPage, showRegister, loginForm, registerForm,
+                    settingsForm,
                     profile, todayData, stats, systemLibraries, selectedLibraries, toast,
-                    todayTasks, currentWordIndex, currentWord, currentOptions, selectedOption, showResult, isCorrect, lastScore,
+                    todayTasks, currentWordIndex, currentWord, currentOptions, selectedOption, showResult, isCorrect, lastScore, lastScoreChange,
                     comboCount, todayStr,
+                    editingDailyGoal,
                     wrongQuestions, wrongbookTab, calendarGroups,
                     login, register, signOut, goTo, signIn, toggleLibrary, saveLibrarySelection,
+                    changeUsername, changePhone, changeEmail, changePassword,
                     startLearning, loadWord, playAudio, handleOptionClick, optionStyle, nextWord,
+                    adjustDailyGoal, saveDailyGoal,
                     loadWrongQuestions, playWrongQuestion, deleteWrongQuestion, highlightWord, playExampleSentence,
                     wgDetailGroup, wordGroups, wgPlayWord, wgHighlight
                 };
