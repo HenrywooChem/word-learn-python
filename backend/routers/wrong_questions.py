@@ -58,6 +58,7 @@ def get_wrong_questions(
             "word": q.word,
             "phonetic": q.phonetic,
             "meaning": q.meaning,
+            "familiarity": q.familiarity,
             "wrong_count": q.wrong_count,
             "correct_count": q.correct_count,
             "status": q.status,
@@ -304,6 +305,7 @@ def add_to_wrong_book(
             word=word,
             phonetic=phonetic,
             meaning=meaning,
+            familiarity=1.0,  # 初始熟悉度
             wrong_count=1,
             correct_count=0,
             status="reviewing",
