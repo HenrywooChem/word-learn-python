@@ -3,7 +3,7 @@ SQLAlchemy 数据库模型定义
 """
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Boolean, Text, JSON
+from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, Boolean, Text, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pydantic import BaseModel
 
@@ -21,6 +21,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String)
+    phone: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True, index=True)
+    email: Mapped[Optional[str]] = mapped_column(String, nullable=True, unique=True, index=True)
     role: Mapped[str] = mapped_column(String)  # 'parent' or 'child'
     parent_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     avatar: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -102,7 +104,7 @@ class WrongQuestion(Base):
     word: Mapped[str] = mapped_column(String)  # 单词
     phonetic: Mapped[str] = mapped_column(String)  # 发音
     meaning: Mapped[str] = mapped_column(String)  # 释义
-    familiarity: Mapped[float] = mapped_column(Integer, default=1.0)  # 熟悉度，初始1.0
+    familiarity: Mapped[float] = mapped_column(Float, default=1.0)  # 熟悉度，初始1.0
     wrong_count: Mapped[int] = mapped_column(Integer, default=1)  # 错误次数
     correct_count: Mapped[int] = mapped_column(Integer, default=0)  # 正确次数
     status: Mapped[str] = mapped_column(String, default="reviewing")  # 'reviewing' 复习中, 'mastered' 已掌握
@@ -153,6 +155,8 @@ class UserCreate(BaseModel):
     name: str
     username: str
     password: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     role: str
     parent_id: Optional[str] = None
 
@@ -161,6 +165,8 @@ class UserResponse(BaseModel):
     id: str
     name: str
     username: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
     role: str
     parent_id: Optional[str] = None
     avatar: Optional[str] = None
@@ -176,7 +182,7 @@ class UserProfileResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
+    username: str  # 可以是用户名、手机号或邮箱
     password: str
 
 
@@ -184,6 +190,30 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class ChangeUsernameRequest(BaseModel):
+    new_username: str
+
+
+class ChangeEmailRequest(BaseModel):
+    new_email: Optional[str] = None  # 设为 None 表示解绑邮箱
+
+
+class ChangePhoneRequest(BaseModel):
+    new_phone: Optional[str] = None  # 设为 None 表示解绑手机号
+
+
+class ResetPasswordRequest(BaseModel):
+    username: str  # 用户名
+    phone: Optional[str] = None  # 绑定的手机号
+    email: Optional[str] = None  # 绑定的邮箱
+    new_password: str  # 新密码
 
 
 class LearningSessionCreate(BaseModel):

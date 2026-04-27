@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 # 复制后端代码
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 COPY backend/ .
 

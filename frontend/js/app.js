@@ -1,0 +1,358 @@
+// Vue 应用主模块
+
+const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+// 创建 Vue 应用
+const app = createApp({
+    setup() {
+        // ==================== 状态管理 ====================
+        
+        // 当前页面
+        const currentPage = ref('login');
+        
+        // 用户相关
+        const currentUser = ref(null);
+        const profile = reactive({
+            total_score: 0,
+            daily_goal: 10,
+        });
+        
+        // 表单数据
+        const loginForm = reactive({
+            username: '',
+            password: '',
+        });
+        
+        const registerForm = reactive({
+            name: '',
+            username: '',
+            phone: '',
+            email: '',
+            password: '',
+            role: 'child',
+        });
+        
+        const resetForm = reactive({
+            username: '',
+            phone: '',
+            email: '',
+            new_password: '',
+        });
+        
+        // 页面状态
+        const showRegister = ref(false);
+        const showResetPassword = ref(false);
+        
+        // 今日学习数据
+        const todayData = reactive({
+            new_words_learned: 0,
+            review_completed: 0,
+            daily_goal: 10,
+            remaining_new: 0,
+            remaining_review: 0,
+            signed_in: false,
+        });
+        
+        // 编辑每日目标
+        const editingDailyGoal = ref(10);
+        
+        // 词库相关
+        const systemLibraries = ref([]);
+        const selectedLibraries = ref([]);
+        
+        // 学习相关
+        const currentWord = ref(null);
+        const currentOptions = ref([]);
+        const currentWordIndex = ref(0);
+        const todayTasks = ref([]);
+        const showResult = ref(false);
+        const selectedOption = ref(null);
+        const isCorrect = ref(false);
+        
+        // Toast 提示
+        const toast = reactive({
+            show: false,
+            message: '',
+        });
+        
+        // ==================== 工具函数 ====================
+        
+        // 显示 Toast
+        function showToast(msg) {
+            toast.message = msg;
+            toast.show = true;
+            setTimeout(() => {
+                toast.show = false;
+            }, 2000);
+        }
+        
+        // ==================== 生命周期 ====================
+        
+        onMounted(async () => {
+            // 检查是否已登录
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+            const userStr = localStorage.getItem(CONFIG.USER_KEY);
+            
+            if (token && userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    currentUser.value = user;
+                    currentPage.value = 'home';
+                    
+                    // 加载首页数据
+                    await loadHomeData();
+                } catch (e) {
+                    console.error('登录状态恢复失败:', e);
+                    logout();
+                }
+            }
+        });
+        
+        // ==================== 数据加载 ====================
+        
+        // 加载首页数据
+        async function loadHomeData() {
+            try {
+                // 获取用户资料
+                const profileData = await getUserProfile();
+                Object.assign(profile, profileData);
+                editingDailyGoal.value = profileData.daily_goal || 10;
+                
+                // 获取今日学习任务
+                const todayLearning = await getTodayLearning();
+                Object.assign(todayData, todayLearning);
+                
+                // 获取词库列表
+                const libraries = await getSystemLibraries();
+                systemLibraries.value = libraries;
+                
+                // 获取用户已选择的词库
+                const userLibs = await getUserLibraries();
+                selectedLibraries.value = userLibs.map(lib => lib.id);
+                
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showToast('加载数据失败: ' + error.message);
+            }
+        }
+        
+        // 加载学习任务
+        async function loadLearningTasks() {
+            try {
+                const data = await getTodayLearning();
+                todayTasks.value = data.tasks || [];
+                currentWordIndex.value = 0;
+                
+                if (todayTasks.value.length > 0) {
+                    await loadNextWord();
+                } else {
+                    showToast('今天的学习任务已完成！');
+                    currentPage.value = 'home';
+                }
+            } catch (error) {
+                console.error('加载学习任务失败:', error);
+                showToast('加载学习任务失败');
+            }
+        }
+        
+        // 加载下一个单词
+        async function loadNextWord() {
+            if (currentWordIndex.value >= todayTasks.value.length) {
+                showToast('学习完成！');
+                currentPage.value = 'home';
+                await loadHomeData();
+                return;
+            }
+            
+            const task = todayTasks.value[currentWordIndex.value];
+            currentWord.value = task;
+            showResult.value = false;
+            selectedOption.value = null;
+            
+            // 获取测验选项
+            try {
+                const options = await getQuizOptions(task.word_id);
+                currentOptions.value = options;
+            } catch (error) {
+                console.error('加载选项失败:', error);
+                showToast('加载选项失败');
+            }
+        }
+        
+        // ==================== 登录注册 ====================
+        
+        async function handleLogin() {
+            if (!loginForm.username || !loginForm.password) {
+                showToast('请填写用户名和密码');
+                return;
+            }
+            
+            try {
+                await login(loginForm.username, loginForm.password);
+                const userStr = localStorage.getItem(CONFIG.USER_KEY);
+                currentUser.value = JSON.parse(userStr);
+                currentPage.value = 'home';
+                showToast('登录成功！');
+                await loadHomeData();
+            } catch (error) {
+                showToast('登录失败: ' + error.message);
+            }
+        }
+        
+        async function handleRegister() {
+            if (!registerForm.name || !registerForm.password) {
+                showToast('请填写姓名和密码');
+                return;
+            }
+            
+            try {
+                await register(registerForm);
+                showToast('注册成功，请登录！');
+                showRegister.value = false;
+                loginForm.username = '';
+                loginForm.password = '';
+            } catch (error) {
+                showToast('注册失败: ' + error.message);
+            }
+        }
+        
+        async function handleResetPassword() {
+            if (!resetForm.username || !resetForm.new_password) {
+                showToast('请填写用户名和新密码');
+                return;
+            }
+            
+            if (!resetForm.phone && !resetForm.email) {
+                showToast('请填写手机号或邮箱');
+                return;
+            }
+            
+            try {
+                await resetPassword(
+                    resetForm.username,
+                    resetForm.phone,
+                    resetForm.email,
+                    resetForm.new_password
+                );
+                showToast('密码重置成功，请登录！');
+                showResetPassword.value = false;
+            } catch (error) {
+                showToast('密码重置失败: ' + error.message);
+            }
+        }
+        
+        function handleLogout() {
+            logout();
+            currentUser.value = null;
+            currentPage.value = 'login';
+            showToast('已退出登录');
+        }
+        
+        // ==================== 学习相关 ====================
+        
+        function startLearning() {
+            currentPage.value = 'learning';
+            loadLearningTasks();
+        }
+        
+        async function handleOptionClick(option) {
+            if (showResult.value) return;
+            
+            selectedOption.value = option;
+            isCorrect.value = option === currentWord.value.meaning;
+            showResult.value = true;
+            
+            // 提交学习结果
+            try {
+                const score = isCorrect.value ? 100 : 0;
+                await submitQuiz(
+                    currentWord.value.word_id,
+                    score,
+                    isCorrect.value
+                );
+            } catch (error) {
+                console.error('提交结果失败:', error);
+            }
+        }
+        
+        function nextWord() {
+            currentWordIndex.value++;
+            loadNextWord();
+        }
+        
+        async function playAudio(text) {
+            try {
+                const audio = new Audio(`${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`);
+                await audio.play();
+            } catch (error) {
+                console.error('播放音频失败:', error);
+            }
+        }
+        
+        // ==================== 词库相关 ====================
+        
+        async function saveSelectedLibraries() {
+            try {
+                await saveUserLibraries(selectedLibraries.value);
+                showToast('保存成功！');
+                currentPage.value = 'home';
+                await loadHomeData();
+            } catch (error) {
+                showToast('保存失败: ' + error.message);
+            }
+        }
+        
+        // ==================== 设置相关 ====================
+        
+        async function saveDailyGoal() {
+            try {
+                await updateDailyGoal(editingDailyGoal.value);
+                profile.daily_goal = editingDailyGoal.value;
+                showToast('保存成功！');
+            } catch (error) {
+                showToast('保存失败: ' + error.message);
+            }
+        }
+        
+        // ==================== 返回 ====================
+        
+        return {
+            // 状态
+            currentPage,
+            currentUser,
+            profile,
+            loginForm,
+            registerForm,
+            resetForm,
+            showRegister,
+            showResetPassword,
+            todayData,
+            editingDailyGoal,
+            systemLibraries,
+            selectedLibraries,
+            currentWord,
+            currentOptions,
+            currentWordIndex,
+            todayTasks,
+            showResult,
+            selectedOption,
+            isCorrect,
+            toast,
+            
+            // 方法
+            handleLogin,
+            handleRegister,
+            handleResetPassword,
+            handleLogout,
+            startLearning,
+            handleOptionClick,
+            nextWord,
+            playAudio,
+            saveSelectedLibraries,
+            saveDailyGoal,
+        };
+    },
+});
+
+// 挂载应用
+app.mount('#app');

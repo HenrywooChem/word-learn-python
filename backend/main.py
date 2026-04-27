@@ -1,5 +1,6 @@
 """
-单词学习应用 - FastAPI 后端
+单词学习应用 - FastAPI 主文件
+更新：添加朗读评分路由
 """
 import os
 import asyncio
@@ -12,8 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from database import init_db
 from routers import auth, libraries, learning, records
 from routers.wrong_questions import router as wrong_questions_router
+from routers.pronunciation import router as pronunciation_router
 
-# Edge TTS 导入
+# Edge TTS 支持
 try:
     import edge_tts
     EDGE_TTS_AVAILABLE = True
@@ -22,11 +24,11 @@ except ImportError:
 
 app = FastAPI(
     title="单词学习应用 API",
-    description="Python 版单词学习应用后端服务",
-    version="1.0.0"
+    description="Python 端学习应用后端服务",
+    version="1.0.1"
 )
 
-# 配置 CORS
+# 开放 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,6 +43,7 @@ app.include_router(libraries.router)
 app.include_router(learning.router)
 app.include_router(records.router)
 app.include_router(wrong_questions_router)
+app.include_router(pronunciation_router)  # 朗读评分
 
 
 @app.on_event("startup")
@@ -57,7 +60,6 @@ frontend_path = os.path.abspath(_local_frontend) if os.path.exists(_local_fronte
 
 @app.get("/health")
 def health_check():
-    """健康检查接口 - 必须在通配符路由之前定义"""
     return {"status": "healthy"}
 
 
@@ -66,33 +68,28 @@ async def tts_endpoint(text: str = Query(..., min_length=1, max_length=500)):
     """TTS接口 - 使用Edge TTS生成音频"""
     if not EDGE_TTS_AVAILABLE:
         return JSONResponse({"error": "TTS not available"}, status_code=503)
-    
+
     try:
-        # 创建临时文件
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
             tmp_path = tmp.name
-        
-        # 使用Edge TTS生成音频
+
         communicate = edge_tts.Communicate(text, "en-US-JennyNeural")
         await communicate.save(tmp_path)
-        
-        # 读取文件并返回
+
         def iterfile():
             with open(tmp_path, "rb") as f:
                 yield from f
-            # 清理临时文件
             try:
                 os.unlink(tmp_path)
             except:
                 pass
-        
+
         return StreamingResponse(
             iterfile(),
             media_type="audio/mpeg",
-            headers={"Content-Disposition": f"inline; filename=tts.mp3"}
+            headers={"Content-Disposition": "inline; filename=tts.mp3"}
         )
     except Exception as e:
-        # 清理临时文件
         try:
             os.unlink(tmp_path)
         except:
@@ -105,12 +102,20 @@ def root():
     """返回前端页面"""
     if os.path.exists(frontend_path):
         return FileResponse(frontend_path)
-    return JSONResponse({"message": "单词学习应用 API 运行中", "docs": "/docs"})
+    return JSONResponse({"message": "单词学习应用 API 启动", "docs": "/docs"})
 
 
 @app.get("/{path:path}")
 async def serve_frontend(path: str):
-    """支持前端路由"""
+    """支持前端路径"""
+    # 先检查是否是静态文件
+    static_dir = os.path.join(_base_dir, "..", "frontend")
+    static_file_path = os.path.join(static_dir, path)
+    
+    if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+        return FileResponse(static_file_path)
+    
+    # 否则返回前端页面
     if os.path.exists(frontend_path):
         return FileResponse(frontend_path)
-    return JSONResponse({"message": "单词学习应用 API 运行中", "docs": "/docs"})
+    return JSONResponse({"message": "单词学习应用"})
