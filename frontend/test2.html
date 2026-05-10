@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试 Vue 加载</title>
+    <script src="vue.js"></script>
+</head>
+<body>
+    <h1>Vue 测试页面</h1>
+    <div id="app">
+        <p>name: {{ name }}</p>
+        <p>age: {{ age }}</p>
+    </div>
+    <script>
+        console.log("Vue object:", Vue);
+        if (typeof Vue !== 'undefined') {
+            const { createApp, ref } = Vue;
+            createApp({
+                setup() {
+                    const name = ref('张三');
+                    const age = ref(25);
+                    return { name, age };
+                }
+            }).mount('#app');
+            console.log("Vue app mounted!");
+            alert("Vue 加载成功！");
+        } else {
+            alert("Vue 未定义！");
+        }
+    </script>
+</body>
+</html>

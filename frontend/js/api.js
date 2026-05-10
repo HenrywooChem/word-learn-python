@@ -37,9 +37,17 @@ async function api(endpoint, options = {}) {
  * 用户登录
  */
 async function login(username, password) {
+    // OAuth2PasswordRequestForm 需要 form-data 格式，不是 JSON
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    
     const data = await api('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
     });
     
     if (data.access_token) {
@@ -110,9 +118,9 @@ async function getUserLibraries() {
  * 保存用户选择的词库
  */
 async function saveUserLibraries(libraryIds) {
-    return await api('/libraries', {
-        method: 'POST',
-        body: JSON.stringify({ library_ids: libraryIds }),
+    return await api('/records/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ selected_library_ids: libraryIds }),
     });
 }
 

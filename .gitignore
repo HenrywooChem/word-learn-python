@@ -41,3 +41,19 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Backup files
+*.bak
+*.bak*
+
+# Archives
+*.tar
+*.tar.gz
+*.zip
+
+# Documents
+*.pdf
+
+# Libraries (should use CDN)
+vue.js
+jquery.js

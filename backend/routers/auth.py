@@ -42,14 +42,18 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
-    # bcrypt 有 72 字节限制
-    return pwd_context.verify(plain_password[:72], hashed_password)
+    # bcrypt 有 72 字节限制，需要按字节截断而不是按字符
+    password_bytes = plain_password.encode('utf-8')[:72]
+    truncated_password = password_bytes.decode('utf-8', errors='ignore')
+    return pwd_context.verify(truncated_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """密码哈希"""
-    # bcrypt 有 72 字节限制
-    return pwd_context.hash(password[:72])
+    # bcrypt 有 72 字节限制，需要按字节截断而不是按字符
+    password_bytes = password.encode('utf-8')[:72]
+    truncated_password = password_bytes.decode('utf-8', errors='ignore')
+    return pwd_context.hash(truncated_password)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -183,7 +187,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             user_id=user_id,
             total_score=100,  # 注册赠送100积分
             daily_goal=10,
-            selected_library_ids="[]"
+            selected_library_ids='["sys-grade6-down-u1", "sys-grade6-down-u2", "sys-grade6-down-u3"]'  # 默认选择六年级下册前三单元
         )
         db.add(profile)
         

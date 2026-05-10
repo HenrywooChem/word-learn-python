@@ -126,9 +126,8 @@ const app = createApp({
                 const libraries = await getSystemLibraries();
                 systemLibraries.value = libraries;
                 
-                // 获取用户已选择的词库
-                const userLibs = await getUserLibraries();
-                selectedLibraries.value = userLibs.map(lib => lib.id);
+                // 获取用户已选择的词库（从profile中获取）
+                selectedLibraries.value = profileData.selected_library_ids || [];
                 
             } catch (error) {
                 console.error('加载数据失败:', error);
@@ -140,7 +139,7 @@ const app = createApp({
         async function loadLearningTasks() {
             try {
                 const data = await getTodayLearning();
-                todayTasks.value = data.tasks || [];
+                todayTasks.value = data.today_tasks || [];
                 currentWordIndex.value = 0;
                 
                 if (todayTasks.value.length > 0) {
@@ -166,13 +165,15 @@ const app = createApp({
             
             const task = todayTasks.value[currentWordIndex.value];
             currentWord.value = task;
+            // 自动播放单词读音
+            playAudio(task.word);
             showResult.value = false;
             selectedOption.value = null;
             
             // 获取测验选项
             try {
                 const options = await getQuizOptions(task.word_id);
-                currentOptions.value = options;
+                currentOptions.value = options.options || [];
             } catch (error) {
                 console.error('加载选项失败:', error);
                 showToast('加载选项失败');
@@ -259,7 +260,7 @@ const app = createApp({
             if (showResult.value) return;
             
             selectedOption.value = option;
-            isCorrect.value = option === currentWord.value.meaning;
+            isCorrect.value = option.text === currentWord.value.meaning;
             showResult.value = true;
             
             // 提交学习结果
@@ -273,6 +274,37 @@ const app = createApp({
             } catch (error) {
                 console.error('提交结果失败:', error);
             }
+            
+            // 答对时朗读例句，答错时加入错题本
+            if (isCorrect.value) {
+                // 答对：播放例句（如果有的话，没有就用单词造句）
+                const exampleText = currentWord.value.example_sentence || currentWord.value.word;
+                setTimeout(() => {
+                    playAudio(exampleText);
+                }, 500);
+                
+                // 例句播放完后0.5秒自动跳转（假设TTS播放约1秒，加上0.5秒延迟）
+                setTimeout(() => {
+                    if (currentWordIndex.value < todayTasks.value.length - 1) {
+                        nextWord();
+                    } else {
+                        showToast('学习完成！');
+                        currentPage.value = 'home';
+                        loadHomeData();
+                    }
+                }, 2000);  // 播放例句约1秒 + 0.5秒延迟
+            } else {
+                // 答错：立即跳转（或者给用户更多时间看正确答案）
+                setTimeout(() => {
+                    if (currentWordIndex.value < todayTasks.value.length - 1) {
+                        nextWord();
+                    } else {
+                        showToast('学习完成！');
+                        currentPage.value = 'home';
+                        loadHomeData();
+                    }
+                }, 1500);  // 给1.5秒看正确答案
+            }
         }
         
         function nextWord() {
@@ -282,10 +314,19 @@ const app = createApp({
         
         async function playAudio(text) {
             try {
-                const audio = new Audio(`${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`);
+                const audio = new Audio();
+                audio.src = `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
+                audio.crossOrigin = "anonymous";
+                audio.load();
                 await audio.play();
             } catch (error) {
                 console.error('播放音频失败:', error);
+                // 尝试使用 Web Speech API 作为后备
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    speechSynthesis.speak(utterance);
+                }
             }
         }
         

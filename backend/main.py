@@ -84,6 +84,7 @@ async def tts_endpoint(text: str = Query(..., min_length=1, max_length=500)):
             except:
                 pass
 
+        headers = {"Access-Control-Allow-Origin": "*"}
         return StreamingResponse(
             iterfile(),
             media_type="audio/mpeg",
@@ -108,6 +109,10 @@ def root():
 @app.get("/{path:path}")
 async def serve_frontend(path: str):
     """支持前端路径"""
+    # 如果是 API 请求，返回 404 而不是前端页面
+    if path.startswith("api/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    
     # 先检查是否是静态文件
     static_dir = os.path.join(_base_dir, "..", "frontend")
     static_file_path = os.path.join(static_dir, path)

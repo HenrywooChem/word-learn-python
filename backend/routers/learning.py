@@ -94,6 +94,7 @@ def get_today_learning(
             "word": w.word,
             "phonetic": w.phonetic,
             "meaning": w.meaning,
+            "example_sentence": w.example_sentence or "",
             "wrong_count": w.wrong_count,
             "correct_count": w.correct_count
         })
@@ -106,7 +107,8 @@ def get_today_learning(
             "word_id": w["id"],
             "word": w["word"],
             "phonetic": w["phonetic"],
-            "meaning": w["meaning"]
+            "meaning": w["meaning"],
+            "example_sentence": w.get("example_sentence", "")
         })
     
     # 随机打乱任务顺序（复习和新词交替）
@@ -367,9 +369,6 @@ def get_random_words(
     selected = all_words[:count]
     
     # 隐藏含义
-    for word in selected:
-        word["meaning"] = "???"
-    
     return selected
 
 
@@ -415,12 +414,38 @@ def get_quiz_options(
         words = json.loads(lib.words)
         all_words.extend(words)
     
-    # 过滤掉目标单词
+    # 过滤掉目标单词及其相似的含义
+    target_meaning = target_word.get("meaning", "")
     other_words = [w for w in all_words if w["id"] != word_id]
-    random.shuffle(other_words)
     
-    # 选择3个干扰项
-    distractors = other_words[:3]
+    # 过滤掉含义相似的干扰项
+    filtered_distractors = []
+    used_meanings = [target_meaning]  # 已使用的含义
+    
+    random.shuffle(other_words)
+    for w in other_words:
+        if len(filtered_distractors) >= 3:
+            break
+        meaning = w.get("meaning", "")
+        # 跳过含义相同或相似的词
+        if meaning and meaning not in used_meanings:
+            # 检查是否包含相同的关键词
+            is_similar = False
+            for used in used_meanings:
+                # 如果两个含义有超过50%的字符重叠，认为相似
+                common_chars = set(meaning) & set(used)
+                if len(common_chars) / max(len(set(meaning) | set(used)), 1) > 0.5:
+                    is_similar = True
+                    break
+            if not is_similar:
+                filtered_distractors.append(w)
+                used_meanings.append(meaning)
+    
+    # 如果过滤后不够3个，放宽条件再试
+    if len(filtered_distractors) < 3:
+        filtered_distractors = other_words[:3]
+    
+    distractors = filtered_distractors[:3]
     
     # 合并并随机打乱
     options = [

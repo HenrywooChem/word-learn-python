@@ -6,9 +6,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/wordlearn.db:/app/data/wordlearn.db
+      - ./backend/word_learn.db:/app/data/wordlearn.db
       - ./backend:/app/backend
       - ./frontend:/app/frontend
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    working_dir: /app/backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
