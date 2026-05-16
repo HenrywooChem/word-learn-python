@@ -165,8 +165,6 @@ const app = createApp({
             
             const task = todayTasks.value[currentWordIndex.value];
             currentWord.value = task;
-            // 自动播放单词读音
-            playAudio(task.word);
             showResult.value = false;
             selectedOption.value = null;
             
@@ -178,6 +176,9 @@ const app = createApp({
                 console.error('加载选项失败:', error);
                 showToast('加载选项失败');
             }
+            
+            // 自动播放单词读音（选项加载完成后播放）
+            playAudio(task.word).catch(err => console.error('自动播放失败:', err));
         }
         
         // ==================== 登录注册 ====================
@@ -275,35 +276,32 @@ const app = createApp({
                 console.error('提交结果失败:', error);
             }
             
-            // 答对时朗读例句，答错时加入错题本
+            // 答对时朗读例句，播放完成后自动跳转
             if (isCorrect.value) {
-                // 答对：播放例句（如果有的话，没有就用单词造句）
+                // 答对：播放例句（如果有的话，没有就用单词）
                 const exampleText = currentWord.value.example_sentence || currentWord.value.word;
-                setTimeout(() => {
-                    playAudio(exampleText);
-                }, 500);
                 
-                // 例句播放完后0.5秒自动跳转（假设TTS播放约1秒，加上0.5秒延迟）
-                setTimeout(() => {
-                    if (currentWordIndex.value < todayTasks.value.length - 1) {
-                        nextWord();
-                    } else {
-                        showToast('学习完成！');
-                        currentPage.value = 'home';
-                        loadHomeData();
-                    }
-                }, 2000);  // 播放例句约1秒 + 0.5秒延迟
+                // 等待一小段时间后播放例句
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                try {
+                    // 播放例句，等待播放完成
+                    await playAudio(exampleText);
+                } catch (error) {
+                    console.error('播放例句失败:', error);
+                }
+                
+                // 自动跳转到下一个单词
+                if (currentWordIndex.value < todayTasks.value.length - 1) {
+                    nextWord();
+                } else {
+                    showToast('学习完成！');
+                    currentPage.value = 'home';
+                    loadHomeData();
+                }
             } else {
-                // 答错：立即跳转（或者给用户更多时间看正确答案）
-                setTimeout(() => {
-                    if (currentWordIndex.value < todayTasks.value.length - 1) {
-                        nextWord();
-                    } else {
-                        showToast('学习完成！');
-                        currentPage.value = 'home';
-                        loadHomeData();
-                    }
-                }, 1500);  // 给1.5秒看正确答案
+                // 答错：给用户时间看正确答案，不自动跳转
+                // 用户需要手动点击"下一题"
             }
         }
         
@@ -313,20 +311,61 @@ const app = createApp({
         }
         
         async function playAudio(text) {
+            // 优先使用后端 Edge TTS（更稳定，支持手机端）
             try {
                 const audio = new Audio();
                 audio.src = `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
                 audio.crossOrigin = "anonymous";
-                audio.load();
+                
+                // 1. 等待音频加载完成
+                await new Promise((resolve, reject) => {
+                    audio.oncanplaythrough = resolve;
+                    audio.onerror = (e) => reject(new Error('音频加载失败'));
+                    audio.load();
+                });
+                
+                // 2. 开始播放
                 await audio.play();
+                
+                // 3. 等待音频播放完成
+                await new Promise((resolve) => {
+                    audio.onended = resolve;
+                });
+                
+                return; // 播放成功则退出
             } catch (error) {
-                console.error('播放音频失败:', error);
-                // 尝试使用 Web Speech API 作为后备
+                console.error('后端 TTS 播放失败:', error);
+            }
+            
+            // 如果后端 TTS 失败，尝试 Web Speech API（作为后备）
+            try {
                 if ('speechSynthesis' in window) {
+                    speechSynthesis.cancel();
+                    
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'en-US';
-                    speechSynthesis.speak(utterance);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+                    
+                    const voices = speechSynthesis.getVoices();
+                    const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) ||
+                                         voices.find(v => v.lang.startsWith('en'));
+                    if (englishVoice) {
+                        utterance.voice = englishVoice;
+                    }
+                    
+                    return new Promise((resolve, reject) => {
+                        utterance.onend = () => resolve();
+                        utterance.onerror = (e) => {
+                            console.error('Web Speech API 错误:', e);
+                            reject(e);
+                        };
+                        speechSynthesis.speak(utterance);
+                    });
                 }
+            } catch (error) {
+                console.error('播放音频失败:', error);
             }
         }
         
