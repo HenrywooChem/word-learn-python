@@ -311,8 +311,9 @@ def sign_in(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """每日签到 - 赠送1积分"""
+    """每日签到 - 赠送1积分，连续签到额外奖励"""
     today = datetime.now().strftime("%Y-%m-%d")
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     
     # 检查今日是否已签到
     daily_record = db.query(DailyRecord).filter(
@@ -323,11 +324,36 @@ def sign_in(
     if daily_record and daily_record.signed_in:
         raise HTTPException(status_code=400, detail="今日已签到")
     
-    # 签到奖励积分
+    # 签到基础积分
     bonus_score = 1
+    
+    # 更新用户总分和连续签到天数
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    if profile:
+        # 判断是否连续签到：上次签到是昨天
+        if profile.last_sign_in == yesterday:
+            profile.continuous_signin_days += 1
+        elif profile.last_sign_in == today:
+            # 今天已签到（上面的检查应该已拦截，但保险起见）
+            pass
+        else:
+            # 不连续，重新计数
+            profile.continuous_signin_days = 1
+        
+        # 连续签到奖励
+        continuous_bonus = 0
+        if profile.continuous_signin_days >= 30:
+            continuous_bonus = 50
+        elif profile.continuous_signin_days >= 7:
+            continuous_bonus = 10
+        
+        bonus_score += continuous_bonus
+        profile.total_score += bonus_score
+        profile.last_sign_in = today
     
     if daily_record:
         daily_record.signed_in = True
+        daily_record.total_score += bonus_score
     else:
         daily_record = DailyRecord(
             user_id=current_user.id,
@@ -338,15 +364,18 @@ def sign_in(
         )
         db.add(daily_record)
     
-    # 更新用户总分
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    if profile:
-        profile.total_score += bonus_score
-        profile.last_sign_in = today
-    
     db.commit()
     
-    return {"message": "签到成功", "bonus_score": bonus_score}
+    result = {
+        "message": "签到成功",
+        "bonus_score": bonus_score,
+        "continuous_signin_days": profile.continuous_signin_days if profile else 0
+    }
+    if profile and profile.continuous_signin_days >= 7:
+        result["continuous_bonus"] = bonus_score - 1
+        result["message"] += f"，连续签到{profile.continuous_signin_days}天，额外奖励{bonus_score - 1}积分！"
+    
+    return result
 
 
 @router.get("/random-words")

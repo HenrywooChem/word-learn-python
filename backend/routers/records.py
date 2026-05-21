@@ -29,7 +29,8 @@ def get_profile(
             "total_score": 0,
             "last_sign_in": None,
             "daily_goal": 10,
-            "selected_library_ids": []
+            "selected_library_ids": [],
+            "continuous_signin_days": 0
         }
     
     # 获取总学习天数
@@ -50,6 +51,7 @@ def get_profile(
         "last_sign_in": profile.last_sign_in,
         "daily_goal": profile.daily_goal,
         "selected_library_ids": json.loads(profile.selected_library_ids),
+        "continuous_signin_days": profile.continuous_signin_days,
         "total_days": total_days,
         "mastered_words": mastered_count
     }

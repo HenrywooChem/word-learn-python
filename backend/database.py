@@ -43,6 +43,14 @@ def init_db():
         except Exception:
             db.rollback()
         
+        # 数据库迁移：为 user_profiles 表添加 continuous_signin_days 列
+        try:
+            db.execute(text("ALTER TABLE user_profiles ADD COLUMN continuous_signin_days INTEGER DEFAULT 0"))
+            db.commit()
+            print("数据库迁移完成：user_profiles 表已添加 continuous_signin_days 列")
+        except Exception:
+            db.rollback()
+        
         # 检查是否已有数据，增量导入缺失的系统词库
         system_libraries = get_system_libraries()
         for lib_data in system_libraries:

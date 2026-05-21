@@ -46,6 +46,7 @@ class UserProfile(Base):
     last_sign_in: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     daily_goal: Mapped[int] = mapped_column(Integer, default=10)
     selected_library_ids: Mapped[str] = mapped_column(String, default="[]")  # JSON string
+    continuous_signin_days: Mapped[int] = mapped_column(Integer, default=0)  # 连续签到天数
     
     user: Mapped["User"] = relationship("User", back_populates="profile")
 
@@ -179,6 +180,7 @@ class UserProfileResponse(BaseModel):
     last_sign_in: Optional[str] = None
     daily_goal: int
     selected_library_ids: List[str]
+    continuous_signin_days: int = 0
 
 
 class LoginRequest(BaseModel):

@@ -88,6 +88,9 @@
                 <span>📚</span>
                 <h2>{{ currentUser.name }}</h2>
                 <p>积分: {{ profile.total_score }}</p>
+                <span v-if="todayData.signed_in" class="signin-badge signed">✅ 已签到</span>
+                <button v-else @click="handleSignIn" class="btn-signin">📝 签到 +1</button>
+                <span v-if="profile.continuous_signin_days >= 2" class="signin-streak">🔥 连续{{ profile.continuous_signin_days }}天</span>
                 <button @click="currentPage = 'settings'" class="btn-small">⚙️</button>
                 <button @click="handleLogout" class="btn-small">🚪</button>
             </div>

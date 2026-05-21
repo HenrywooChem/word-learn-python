@@ -164,6 +164,38 @@ body {
     opacity: 0.9;
 }
 
+/* 签到按钮 */
+.btn-signin {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-signin:hover {
+    background: rgba(255,255,255,0.35);
+}
+
+/* 已签到徽章 */
+.signin-badge.signed {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 13px;
+}
+
+/* 连续签到天数 */
+.signin-streak {
+    color: #fbbf24;
+    font-size: 13px;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
 .stat {
     font-size: 48px;
     font-weight: 700;

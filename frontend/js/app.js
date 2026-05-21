@@ -51,6 +51,7 @@ const app = createApp({
             remaining_new: 0,
             remaining_review: 0,
             signed_in: false,
+            continuous_signin_days: 0,
         });
         
         // 编辑每日目标
@@ -112,7 +113,33 @@ const app = createApp({
         // ==================== 数据加载 ====================
         
         // 加载首页数据
-        async function loadHomeData() {
+        async     // 签到功能
+    async function handleSignIn() {
+        try {
+            const response = await fetch('/api/learning/signin', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token.value}` }
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || '签到失败');
+            }
+            const result = await response.json();
+            // Update profile and todayData
+            profile.value.total_score += result.bonus_score;
+            todayData.value.signed_in = true;
+            if (result.continuous_signin_days) {
+                profile.value.continuous_signin_days = result.continuous_signin_days;
+            }
+            alert(result.message);
+            // Reload profile to sync
+            await loadHomeData();
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    function loadHomeData() {
             try {
                 // 获取用户资料
                 const profileData = await getUserProfile();
