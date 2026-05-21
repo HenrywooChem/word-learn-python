@@ -168,9 +168,17 @@
                     </div>
                     
                     <div v-if="showResult" class="result">
-                        <h3>{{ isCorrect ? '✓ 回答正确！' : '✗ 回答错误' }}</h3>
+                        <h3 v-if="isCorrect">✓ 回答正确！</h3>
+                        <h3 v-else>✗ 回答错误</h3>
                         <p>正确答案：{{ currentWord.meaning }}</p>
-                        <button @click="nextWord" class="btn btn-primary">
+                        
+                        <!-- 答对：显示自动跳转提示 -->
+                        <p v-if="isCorrect" class="text-sm text-muted">
+                            {{ currentWordIndex < todayTasks.length - 1 ? '🎵 例句播放后自动跳转...' : '🎉 学习完成！' }}
+                        </p>
+                        
+                        <!-- 答错：显示手动跳转按钮 -->
+                        <button v-if="!isCorrect" @click="nextWord" class="btn btn-primary">
                             {{ currentWordIndex < todayTasks.length - 1 ? '下一题 →' : '完成 🎉' }}
                         </button>
                     </div>
@@ -210,6 +218,6 @@
     <!-- 引入 JS 模块 -->
     <script src="js/config.js?v=3"></script>
     <script src="js/api.js?v=3"></script>
-    <script src="js/app.js?v=8"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>

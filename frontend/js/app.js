@@ -68,6 +68,7 @@ const app = createApp({
         const showResult = ref(false);
         const selectedOption = ref(null);
         const isCorrect = ref(false);
+        const isPlayingAudio = ref(false); // 标记是否正在播放音频
         
         // Toast 提示
         const toast = reactive({
@@ -177,8 +178,12 @@ const app = createApp({
                 showToast('加载选项失败');
             }
             
-            // 自动播放单词读音（选项加载完成后播放）
-            playAudio(task.word).catch(err => console.error('自动播放失败:', err));
+            // 自动播放单词读音（等待播放完成）
+            try {
+                await playAudio(task.word);
+            } catch (err) {
+                console.error('自动播放失败:', err);
+            }
         }
         
         // ==================== 登录注册 ====================
@@ -276,13 +281,13 @@ const app = createApp({
                 console.error('提交结果失败:', error);
             }
             
-            // 答对时朗读例句，播放完成后自动跳转
+            // 答对时朗读例句，播放完成后自动跳转到下一个单词
             if (isCorrect.value) {
                 // 答对：播放例句（如果有的话，没有就用单词）
                 const exampleText = currentWord.value.example_sentence || currentWord.value.word;
                 
                 // 等待一小段时间后播放例句
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
                 try {
                     // 播放例句，等待播放完成
@@ -291,23 +296,31 @@ const app = createApp({
                     console.error('播放例句失败:', error);
                 }
                 
-                // 自动跳转到下一个单词
+                // 例句播放完成后，自动跳转到下一个单词
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
                 if (currentWordIndex.value < todayTasks.value.length - 1) {
-                    nextWord();
+                    currentWordIndex.value++;
+                    await loadNextWord();
                 } else {
                     showToast('学习完成！');
                     currentPage.value = 'home';
                     loadHomeData();
                 }
-            } else {
-                // 答错：给用户时间看正确答案，不自动跳转
-                // 用户需要手动点击"下一题"
             }
+            // 答错：不自动跳转，让用户记住正确答案，点击"下一题"按钮手动跳转
         }
         
-        function nextWord() {
-            currentWordIndex.value++;
-            loadNextWord();
+        // 手动跳转下一个单词（答错时使用）
+        async function nextWord() {
+            if (currentWordIndex.value < todayTasks.value.length - 1) {
+                currentWordIndex.value++;
+                await loadNextWord();
+            } else {
+                showToast('学习完成！');
+                currentPage.value = 'home';
+                loadHomeData();
+            }
         }
         
         async function playAudio(text) {
@@ -417,6 +430,7 @@ const app = createApp({
             showResult,
             selectedOption,
             isCorrect,
+            isPlayingAudio,
             toast,
             
             // 方法
@@ -426,7 +440,7 @@ const app = createApp({
             handleLogout,
             startLearning,
             handleOptionClick,
-            nextWord,
+            nextWord, // 保留给答错时手动跳转
             playAudio,
             saveSelectedLibraries,
             saveDailyGoal,
