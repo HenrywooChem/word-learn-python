@@ -319,7 +319,8 @@ const app = createApp({
                 await submitQuiz(
                     currentWord.value.word_id,
                     score,
-                    isCorrect.value
+                    isCorrect.value,
+                    option.text  // 发送选中的选项文本供后端验证
                 );
             } catch (error) {
                 console.error('提交结果失败:', error);

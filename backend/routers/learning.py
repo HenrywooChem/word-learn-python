@@ -401,9 +401,9 @@ def get_random_words(
     return selected
 
 
-@router.get("/quiz-options/{word_id}")
+@router.get("/quiz-options")
 def get_quiz_options(
-    word_id: str,
+    word_id: str = Query(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -437,53 +437,52 @@ def get_quiz_options(
     if not target_word:
         raise HTTPException(status_code=404, detail="单词不存在")
     
-    # 获取其他单词作为干扰项
-    all_words = []
-    for lib in libraries:
-        words = json.loads(lib.words)
-        all_words.extend(words)
-    
-    # 过滤掉目标单词及其相似的含义
-    target_meaning = target_word.get("meaning", "")
-    other_words = [w for w in all_words if w["id"] != word_id]
-    
-    # 过滤掉含义相似的干扰项
-    filtered_distractors = []
-    used_meanings = [target_meaning]  # 已使用的含义
-    
-    random.shuffle(other_words)
-    for w in other_words:
-        if len(filtered_distractors) >= 3:
-            break
-        meaning = w.get("meaning", "")
-        # 跳过含义相同或相似的词
-        if meaning and meaning not in used_meanings:
-            # 检查是否包含相同的关键词
-            is_similar = False
-            for used in used_meanings:
-                # 如果两个含义有超过50%的字符重叠，认为相似
-                common_chars = set(meaning) & set(used)
-                if len(common_chars) / max(len(set(meaning) | set(used)), 1) > 0.5:
-                    is_similar = True
-                    break
-            if not is_similar:
-                filtered_distractors.append(w)
-                used_meanings.append(meaning)
-    
-    # 如果过滤后不够3个，放宽条件再试
-    if len(filtered_distractors) < 3:
-        filtered_distractors = other_words[:3]
-    
-    distractors = filtered_distractors[:3]
-    
-    # 合并并随机打乱
-    options = [
-        {"text": target_word["meaning"], "correct": True},
-        {"text": distractors[0]["meaning"], "correct": False},
-        {"text": distractors[1]["meaning"], "correct": False},
-        {"text": distractors[2]["meaning"], "correct": False},
-    ]
-    random.shuffle(options)
+    # 优先使用预设选项（如果词库中已定义 A/B/C/D 选项）
+    predefined_options = target_word.get("options")
+    if predefined_options and isinstance(predefined_options, list) and len(predefined_options) == 4:
+        options = predefined_options
+    else:
+        # 没有预设选项时，自动生成
+        all_words = []
+        for lib in libraries:
+            words = json.loads(lib.words)
+            all_words.extend(words)
+        
+        target_meaning = target_word.get("meaning", "")
+        other_words = [w for w in all_words if w["id"] != word_id]
+        
+        # 过滤掉含义相似的干扰项
+        filtered_distractors = []
+        used_meanings = [target_meaning]
+        
+        random.shuffle(other_words)
+        for w in other_words:
+            if len(filtered_distractors) >= 3:
+                break
+            meaning = w.get("meaning", "")
+            if meaning and meaning not in used_meanings:
+                is_similar = False
+                for used in used_meanings:
+                    common_chars = set(meaning) & set(used)
+                    if len(common_chars) / max(len(set(meaning) | set(used)), 1) > 0.5:
+                        is_similar = True
+                        break
+                if not is_similar:
+                    filtered_distractors.append(w)
+                    used_meanings.append(meaning)
+        
+        if len(filtered_distractors) < 3:
+            filtered_distractors = other_words[:3]
+        
+        distractors = filtered_distractors[:3]
+        
+        options = [
+            {"text": target_word["meaning"], "correct": True},
+            {"text": distractors[0]["meaning"], "correct": False},
+            {"text": distractors[1]["meaning"], "correct": False},
+            {"text": distractors[2]["meaning"], "correct": False},
+        ]
+        random.shuffle(options)
     
     return {
         "word_id": word_id,

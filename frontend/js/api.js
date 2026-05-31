@@ -137,19 +137,20 @@ async function getTodayLearning() {
  * 获取测验选项
  */
 async function getQuizOptions(wordId) {
-    return await api(`/learning/quiz-options/${wordId}`);
+    return await api(`/learning/quiz-options?word_id=${encodeURIComponent(wordId)}`);
 }
 
 /**
  * 提交学习结果
  */
-async function submitQuiz(wordId, score, isCorrect) {
+async function submitQuiz(wordId, score, isCorrect, selectedMeaning) {
     return await api('/learning/submit-quiz', {
         method: 'POST',
         body: JSON.stringify({
             word_id: wordId,
             score,
             is_correct: isCorrect,
+            selected_meaning: selectedMeaning,
         }),
     });
 }
