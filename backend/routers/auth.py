@@ -23,8 +23,9 @@ router = APIRouter(prefix="/api/auth", tags=["认证"])
 # 密码加密
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT 配置
-SECRET_KEY = "word-learn-secret-key-change-in-production"
+# JWT 配置 — 优先从环境变量读取，否则生成随机密钥
+import os
+SECRET_KEY = os.environ.get("WORDLEARN_SECRET_KEY") or os.urandom(32).hex()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7天
 

@@ -57,3 +57,6 @@ Thumbs.db
 # Libraries (should use CDN)
 vue.js
 jquery.js
+
+# Secrets
+.secret_key

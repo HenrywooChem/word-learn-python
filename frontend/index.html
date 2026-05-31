@@ -2,34 +2,51 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>单词学习 - Python版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>单词学习</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/vue.prod.js?v=2"></script>
 </head>
 <body>
     <div id="app">
+        <!-- 加载遮罩 -->
+        <div v-if="loading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>加载中...</p>
+        </div>
+
+        <!-- 网络错误提示 -->
+        <div v-if="networkError && currentPage !== 'login'" class="network-error">
+            <p>⚠️ 网络连接失败</p>
+            <button @click="loadHomeData" class="btn-retry">重试</button>
+        </div>
+
         <!-- 登录页面 -->
         <div v-if="currentPage === 'login'" class="page login-page">
             <div class="container">
-                <h1>📚 单词学习</h1>
-                <p class="subtitle">Python 版</p>
-                
+                <div class="login-header">
+                    <h1>📚</h1>
+                    <h1>单词学习</h1>
+                    <p class="subtitle">每天进步一点点</p>
+                </div>
+
                 <!-- 登录表单 -->
                 <div v-if="!showRegister && !showResetPassword" class="card">
                     <div class="form-group">
-                        <input v-model="loginForm.username" type="text" class="input" placeholder="用户名 / 手机号 / 邮箱">
+                        <input v-model="loginForm.username" type="text" class="input" placeholder="用户名 / 手机号 / 邮箱" @keyup.enter="handleLogin">
                     </div>
                     <div class="form-group">
-                        <input v-model="loginForm.password" type="password" class="input" placeholder="密码">
+                        <input v-model="loginForm.password" type="password" class="input" placeholder="密码" @keyup.enter="handleLogin">
                     </div>
-                    <button @click="handleLogin" class="btn btn-primary">登录</button>
+                    <button @click="handleLogin" class="btn btn-primary" :disabled="loading">
+                        {{ loading ? '登录中...' : '登录' }}
+                    </button>
                     <div class="links">
                         <a @click="showResetPassword = true" href="#">忘记密码？</a>
                         <a @click="showRegister = true" href="#">立即注册</a>
                     </div>
                 </div>
-                
+
                 <!-- 注册表单 -->
                 <div v-if="showRegister" class="card">
                     <h2>注册新账号</h2>
@@ -40,7 +57,7 @@
                         <input v-model="registerForm.username" type="text" class="input" placeholder="用户名（选填）">
                     </div>
                     <div class="form-group">
-                        <input v-model="registerForm.phone" type="text" class="input" placeholder="手机号（选填）">
+                        <input v-model="registerForm.phone" type="tel" class="input" placeholder="手机号（选填）">
                     </div>
                     <div class="form-group">
                         <input v-model="registerForm.email" type="email" class="input" placeholder="邮箱（选填）">
@@ -50,14 +67,14 @@
                     </div>
                     <div class="form-group">
                         <select v-model="registerForm.role" class="input">
-                            <option value="child">孩子</option>
-                            <option value="parent">家长</option>
+                            <option value="child">👶 孩子</option>
+                            <option value="parent">👨 家长</option>
                         </select>
                     </div>
-                    <button @click="handleRegister" class="btn btn-primary">注册</button>
-                    <button @click="showRegister = false" class="btn btn-outline">取消</button>
+                    <button @click="handleRegister" class="btn btn-primary" :disabled="loading">{{ loading ? '注册中...' : '注册' }}</button>
+                    <button @click="showRegister = false" class="btn btn-outline">← 返回登录</button>
                 </div>
-                
+
                 <!-- 忘记密码 -->
                 <div v-if="showResetPassword" class="card">
                     <h2>重置密码</h2>
@@ -65,162 +82,213 @@
                         <input v-model="resetForm.username" type="text" class="input" placeholder="用户名 *">
                     </div>
                     <div class="form-group">
-                        <input v-model="resetForm.phone" type="text" class="input" placeholder="手机号">
+                        <input v-model="resetForm.phone" type="tel" class="input" placeholder="手机号（选填）">
                     </div>
+                    <p class="text-center text-sm">或</p>
                     <div class="form-group">
-                        <span>或</span>
-                    </div>
-                    <div class="form-group">
-                        <input v-model="resetForm.email" type="email" class="input" placeholder="邮箱">
+                        <input v-model="resetForm.email" type="email" class="input" placeholder="邮箱（选填）">
                     </div>
                     <div class="form-group">
                         <input v-model="resetForm.new_password" type="password" class="input" placeholder="新密码（至少6位）*">
                     </div>
-                    <button @click="handleResetPassword" class="btn btn-primary">重置密码</button>
-                    <button @click="showResetPassword = false" class="btn btn-outline">取消</button>
+                    <button @click="handleResetPassword" class="btn btn-primary" :disabled="loading">{{ loading ? '提交中...' : '重置密码' }}</button>
+                    <button @click="showResetPassword = false" class="btn btn-outline">← 返回登录</button>
                 </div>
             </div>
         </div>
-        
+
         <!-- 首页 -->
         <div v-if="currentPage === 'home'" class="page home-page">
             <div class="header">
-                <span>📚</span>
-                <h2>{{ currentUser.name }}</h2>
-                <p>积分: {{ profile.total_score }}</p>
-                <span v-if="todayData.signed_in" class="signin-badge signed">✅ 已签到</span>
-                <button v-else @click="handleSignIn" class="btn-signin">📝 签到 +1</button>
-                <span v-if="profile.continuous_signin_days >= 2" class="signin-streak">🔥 连续{{ profile.continuous_signin_days }}天</span>
-                <button @click="currentPage = 'settings'" class="btn-small">⚙️</button>
-                <button @click="handleLogout" class="btn-small">🚪</button>
-            </div>
-            
-            <div class="container">
-                <div class="card">
-                    <h3>今日学习</h3>
-                    <p class="stat">{{ todayData.new_words_learned + todayData.review_completed }} / {{ todayData.daily_goal }}</p>
-                    <p class="text-sm">新词: {{ todayData.new_words_learned }} | 复习: {{ todayData.review_completed }}</p>
-                    <button @click="startLearning" class="btn btn-primary">📖 开始学习</button>
-                    <button @click="currentPage = 'libraries'" class="btn btn-outline">📚 词库管理</button>
-                </div>
-                
-                <div class="card mt-4">
-                    <h3>每日目标</h3>
-                    <div class="flex-center">
-                        <button @click="editingDailyGoal = Math.max(1, editingDailyGoal - 1)" class="btn-small">−</button>
-                        <span class="goal-num">{{ editingDailyGoal }}</span>
-                        <button @click="editingDailyGoal += 1" class="btn-small">+</button>
+                <div class="header-left">
+                    <span class="header-emoji">📚</span>
+                    <div class="header-user">
+                        <h2>{{ currentUser.name }}</h2>
+                        <span class="header-score">⭐ {{ profile.total_score }} 积分</span>
                     </div>
-                    <button @click="saveDailyGoal" class="btn btn-primary mt-2">保存</button>
+                </div>
+                <div class="header-right">
+                    <span v-if="todayData.signed_in" class="signin-badge signed">✅ 已签到</span>
+                    <button v-else @click="handleSignIn" class="btn-signin">📝 签到</button>
+                    <span v-if="profile.continuous_signin_days >= 2" class="signin-streak">🔥{{ profile.continuous_signin_days }}天</span>
+                    <button @click="currentPage = 'settings'" class="btn-small">⚙️</button>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="card progress-card">
+                    <div class="progress-header">
+                        <h3>今日学习</h3>
+                        <span class="progress-count">{{ todayData.new_words_learned + todayData.review_completed }} / {{ todayData.daily_goal }}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" :style="{ width: Math.min(100, (todayData.new_words_learned + todayData.review_completed) / todayData.daily_goal * 100) + '%' }"></div>
+                    </div>
+                    <p class="text-sm">新词: {{ todayData.new_words_learned }} | 复习: {{ todayData.review_completed }}</p>
+                    <div class="card-actions">
+                        <button @click="startLearning" class="btn btn-primary">📖 开始学习</button>
+                        <button @click="currentPage = 'libraries'" class="btn btn-outline">📚 词库管理</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>每日目标</h3>
+                    <div class="flex-center goal-adjust">
+                        <button @click="editingDailyGoal = Math.max(1, editingDailyGoal - 1)" class="btn-round">−</button>
+                        <span class="goal-num">{{ editingDailyGoal }}</span>
+                        <button @click="editingDailyGoal += 1" class="btn-round">+</button>
+                    </div>
+                    <button @click="saveDailyGoal" class="btn btn-primary mt-2" :disabled="loading">{{ loading ? '保存中...' : '保存' }}</button>
+                </div>
+
+                <div class="card stats-card">
+                    <h3>📊 学习概况</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value">{{ todayData.continuous_signin_days || 0 }}</span>
+                            <span class="stat-label">连续签到</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ profile.total_score || 0 }}</span>
+                            <span class="stat-label">总积分</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ todayData.remaining_new || 0 }}</span>
+                            <span class="stat-label">待学新词</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ todayData.remaining_review || 0 }}</span>
+                            <span class="stat-label">待复习</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- 词库页面 -->
         <div v-if="currentPage === 'libraries'" class="page libraries-page">
             <div class="header">
-                <button @click="currentPage = 'home'" class="btn-small">←</button>
+                <button @click="currentPage = 'home'" class="btn-small">← 返回</button>
                 <span>词库管理</span>
-                <button @click="saveSelectedLibraries" class="btn-small">保存</button>
+                <button @click="saveSelectedLibraries" class="btn-small btn-save" :disabled="loading">保存</button>
             </div>
             <div class="container">
-                <div v-for="lib in systemLibraries" :key="lib.id" class="card library-item">
-                    <h3>{{ lib.name }}</h3>
-                    <p>{{ lib.description }}</p>
-                    <p class="text-sm">单词数: {{ lib.words ? lib.words.length : 0 }}</p>
-                    <label>
-                        <input type="checkbox" v-model="selectedLibraries" :value="lib.id">
-                        {{ selectedLibraries.includes(lib.id) ? '✓ 已选择' : '选择' }}
-                    </label>
+                <p class="text-sm mb-4">选择要学习的词库：</p>
+                <div v-for="lib in systemLibraries" :key="lib.id" class="card library-item" @click="toggleLibrary(lib.id)">
+                    <div class="library-info">
+                        <h3>{{ lib.name }}</h3>
+                        <p>{{ lib.description }}</p>
+                        <p class="text-sm">📝 {{ lib.words ? lib.words.length : 0 }} 个单词</p>
+                    </div>
+                    <div class="library-check" :class="{ checked: selectedLibraries.includes(lib.id) }">
+                        <span v-if="selectedLibraries.includes(lib.id)">✓</span>
+                    </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- 学习页面 -->
         <div v-if="currentPage === 'learning'" class="page learning-page">
             <div class="header">
-                <button @click="currentPage = 'home'" class="btn-small">←</button>
-                <span>开始学习</span>
+                <button @click="currentPage = 'home'" class="btn-small">← 退出</button>
+                <span>学习 ({{ currentWordIndex + 1 }}/{{ todayTasks.length }})</span>
+                <span></span>
             </div>
             <div class="container">
                 <div v-if="currentWord" class="card">
-                    <p v-if="currentWord.taskType === 'review'" class="tag">🔁 复习</p>
-                    <p v-else class="tag">📖 新词</p>
-                    
+                    <div class="word-header">
+                        <span v-if="currentWord.taskType === 'review'" class="tag tag-review">🔁 复习</span>
+                        <span v-else class="tag tag-new">📖 新词</span>
+                    </div>
+
                     <h2 class="word">{{ currentWord.word }}</h2>
                     <p class="phonetic">{{ currentWord.phonetic }}</p>
-                    
-                    <p v-if="currentWord.example_sentence" class="example-sentence">📝 例句：{{ currentWord.example_sentence }}</p>
-                    
-                    <button @click="playAudio(currentWord.word)" class="btn btn-outline">🔊 听发音</button>
-                    
-                    <p class="pos">{{ currentWord.part_of_speech }}</p>
-                    
-                    <p class="instruction">请选择正确的中文意思：</p>
-                    
+
+                    <p v-if="currentWord.example_sentence" class="example-sentence">
+                        💬 {{ currentWord.example_sentence }}
+                    </p>
+
+                    <button @click="playAudio(currentWord.word)" class="btn btn-outline audio-btn" :disabled="isPlayingAudio">
+                        {{ isPlayingAudio ? '🔊 播放中...' : '🔊 听发音' }}
+                    </button>
+
+                    <p class="instruction">选择正确的中文意思：</p>
+
                     <div class="options">
-                        <button 
-                            v-for="(opt, idx) in currentOptions" 
+                        <button
+                            v-for="(opt, idx) in currentOptions"
                             :key="idx"
                             @click="handleOptionClick(opt)"
-                            class="btn btn-outline"
-                            :class="{'correct': showResult && opt.text === currentWord.meaning, 'wrong': showResult && selectedOption.text === opt.text && opt.text !== currentWord.meaning}"
+                            class="btn option-btn"
+                            :class="{
+                                'correct': showResult && opt.text === currentWord.meaning,
+                                'wrong': showResult && selectedOption && selectedOption.text === opt.text && opt.text !== currentWord.meaning
+                            }"
+                            :disabled="showResult"
                         >
                             {{ opt.text }}
                         </button>
                     </div>
-                    
+
                     <div v-if="showResult" class="result">
-                        <h3 v-if="isCorrect">✓ 回答正确！</h3>
-                        <h3 v-else>✗ 回答错误</h3>
-                        <p>正确答案：{{ currentWord.meaning }}</p>
-                        
-                        <!-- 答对：显示自动跳转提示 -->
-                        <p v-if="isCorrect" class="text-sm text-muted">
-                            {{ currentWordIndex < todayTasks.length - 1 ? '🎵 例句播放后自动跳转...' : '🎉 学习完成！' }}
+                        <div class="result-icon" :class="{ 'result-correct': isCorrect, 'result-wrong': !isCorrect }">
+                            {{ isCorrect ? '✓' : '✗' }}
+                        </div>
+                        <h3 :class="{ 'text-green': isCorrect, 'text-red': !isCorrect }">
+                            {{ isCorrect ? '回答正确！' : '回答错误' }}
+                        </h3>
+                        <p class="text-sm" v-if="!isCorrect">正确答案：<strong>{{ currentWord.meaning }}</strong></p>
+
+                        <p v-if="isCorrect && currentWordIndex < todayTasks.length - 1" class="text-sm text-muted">
+                            🔊 例句播放后自动跳转...
                         </p>
-                        
-                        <!-- 答错：显示手动跳转按钮 -->
-                        <button v-if="!isCorrect" @click="nextWord" class="btn btn-primary">
+
+                        <button v-if="!isCorrect" @click="nextWord" class="btn btn-primary next-btn">
                             {{ currentWordIndex < todayTasks.length - 1 ? '下一题 →' : '完成 🎉' }}
                         </button>
                     </div>
                 </div>
-                
+
                 <div v-else class="card text-center">
-                    <p>加载中...</p>
+                    <p v-if="loading">加载中...</p>
+                    <p v-else>今天没有学习任务 🎉</p>
                 </div>
             </div>
         </div>
-        
+
         <!-- 设置页面 -->
         <div v-if="currentPage === 'settings'" class="page settings-page">
             <div class="header">
-                <button @click="currentPage = 'home'" class="btn-small">←</button>
+                <button @click="currentPage = 'home'" class="btn-small">← 返回</button>
                 <span>个人设置</span>
+                <span></span>
             </div>
             <div class="container">
                 <div class="card">
-                    <h3>👤 {{ currentUser.name }}</h3>
-                    <p>@{{ currentUser.username }}</p>
+                    <div class="settings-avatar">
+                        <span class="avatar-emoji">👤</span>
+                    </div>
+                    <h3 class="text-center">{{ currentUser.name }}</h3>
+                    <p class="text-center text-sm">@{{ currentUser.username }}</p>
                 </div>
-                
-                <div class="card mt-4">
-                    <button @click="currentPage = 'home'" class="btn btn-primary">返回首页</button>
-                    <button @click="handleLogout" class="btn btn-outline">🚪 退出登录</button>
+
+                <div class="card">
+                    <button @click="currentPage = 'home'" class="btn btn-primary">🏠 返回首页</button>
+                    <button @click="handleLogout" class="btn btn-danger">🚪 退出登录</button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Toast 提示 -->
-        <div v-if="toast.show" class="toast">
-            {{ toast.message }}
-        </div>
+        <transition name="toast">
+            <div v-if="toast.show" class="toast">
+                {{ toast.message }}
+            </div>
+        </transition>
     </div>
-    
-    <!-- 引入 JS 模块 -->
+
     <script src="js/config.js?v=3"></script>
     <script src="js/api.js?v=3"></script>
-    <script src="js/app.js?v=9"></script>
+    <script src="js/app.js?v=10"></script>
 </body>
 </html>
