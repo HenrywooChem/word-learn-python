@@ -25,7 +25,7 @@ cd "$BACKEND_DIR"
 exec gunicorn main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers 4 \
-    --bind 0.0.0.0:8000 \
+    --bind 0.0.0.0:8001 \
     --timeout 120 \
     --access-logfile "$LOG_DIR/access.log" \
     --error-logfile "$LOG_DIR/error.log" \

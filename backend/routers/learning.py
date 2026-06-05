@@ -94,7 +94,6 @@ def get_today_learning(
             "word": w.word,
             "phonetic": w.phonetic,
             "meaning": w.meaning,
-            "example_sentence": w.example_sentence or "",
             "wrong_count": w.wrong_count,
             "correct_count": w.correct_count
         })
