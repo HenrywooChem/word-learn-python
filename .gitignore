@@ -59,4 +59,5 @@ vue.js
 jquery.js
 
 # Secrets
-.secret_key
+.secret_key*.db-wal
+*.db-shm
