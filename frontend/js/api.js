@@ -20,6 +20,13 @@ async function api(endpoint, options = {}) {
         });
         
         if (!res.ok) {
+            // 401 = 凭据失效（token 过期或密钥变更）：清除本地登录态并广播事件，
+            // 排除 /auth/ 接口本身（登录密码错误也返回 401，不应清除用户正在输入的状态）
+            if (res.status === 401 && token && !endpoint.startsWith('/auth/')) {
+                localStorage.removeItem(CONFIG.TOKEN_KEY);
+                localStorage.removeItem(CONFIG.USER_KEY);
+                window.dispatchEvent(new CustomEvent('auth:invalid'));
+            }
             const err = await res.json().catch(() => ({ detail: '请求失败' }));
             throw new Error(err.detail || '请求失败');
         }

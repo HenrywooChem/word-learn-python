@@ -186,18 +186,29 @@ const app = createApp({
         // ==================== 生命周期 ====================
 
         onMounted(async () => {
+            // 监听全局 401 事件：token 失效时回到登录页
+            window.addEventListener('auth:invalid', () => {
+                logout();
+                currentUser.value = null;
+                currentPage.value = 'login';
+                showToast('登录已过期，请重新登录');
+            });
+
             const token = localStorage.getItem(CONFIG.TOKEN_KEY);
             const userStr = localStorage.getItem(CONFIG.USER_KEY);
 
             if (token && userStr) {
                 try {
-                    const user = JSON.parse(userStr);
+                    // 先校验 token 是否有效（后端密钥可能已更换）
+                    const user = await getCurrentUser();
                     currentUser.value = user;
+                    localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(user));
                     currentPage.value = 'home';
                     await loadHomeData();
                 } catch (e) {
                     console.error('登录状态恢复失败:', e);
                     logout();
+                    currentPage.value = 'login';
                 }
             }
         });
