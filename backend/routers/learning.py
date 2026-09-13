@@ -14,6 +14,7 @@ from models import User, UserProfile, WordLibrary, LearningSession, DailyRecord,
 from routers.auth import get_current_user
 from routers.wrong_questions import add_to_wrong_book
 from models import LearningSessionCreate
+from word_data import get_word_extra
 
 router = APIRouter(prefix="/api/learning", tags=["学习"])
 
@@ -87,28 +88,31 @@ def get_today_learning(
     
     # 添加复习任务（标记类型）
     for w in review_words_today:
-        today_tasks.append({
-            "type": "review",
-            "id": w.id,
-            "word_id": w.word_id,
-            "word": w.word,
-            "phonetic": w.phonetic,
-            "meaning": w.meaning,
-            "wrong_count": w.wrong_count,
-            "correct_count": w.correct_count
-        })
+            today_tasks.append({
+                "type": "review",
+                "id": w.id,
+                "word_id": w.word_id,
+                "word": w.word,
+                "phonetic": w.phonetic,
+                "meaning": w.meaning,
+                "example_sentence": getattr(w, "example_sentence", None),
+                **get_word_extra(w.word),
+                "wrong_count": w.wrong_count,
+                "correct_count": w.correct_count
+            })
     
     # 添加新词任务
     for w in new_words_today:
-        today_tasks.append({
-            "type": "new",
-            "id": w["id"],
-            "word_id": w["id"],
-            "word": w["word"],
-            "phonetic": w["phonetic"],
-            "meaning": w["meaning"],
-            "example_sentence": w.get("example_sentence", "")
-        })
+            today_tasks.append({
+                "type": "new",
+                "id": w["id"],
+                "word_id": w["id"],
+                "word": w["word"],
+                "phonetic": w["phonetic"],
+                "meaning": w["meaning"],
+                "example_sentence": w.get("example_sentence", ""),
+                **get_word_extra(w["word"])
+            })
     
     # 随机打乱任务顺序（复习和新词交替）
     random.shuffle(today_tasks)
@@ -489,6 +493,7 @@ def get_quiz_options(
         "phonetic": target_word.get("phonetic", ""),
         "meaning": target_word.get("meaning", ""),
         "example_sentence": target_word.get("example_sentence", ""),
+        **get_word_extra(target_word.get("word", "")),
         "options": options
     }
 

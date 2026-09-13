@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>单词学习</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=2">
     <script src="js/vue.prod.js?v=2"></script>
 </head>
 <body>
@@ -201,8 +201,14 @@
                         <span v-else class="tag tag-new">📖 新词</span>
                     </div>
 
-                    <h2 class="word">{{ currentWord.word }}</h2>
+                    <h2 class="word">{{ currentWord.word }} <span v-if="currentWord.pos" class="pos-badge">{{ currentWord.pos }}</span></h2>
                     <p class="phonetic">{{ currentWord.phonetic }}</p>
+
+                    <div v-if="currentWord.irregular_forms" class="irregular-forms">
+                        <span class="irr-title">⚡ 不规则动词</span>
+                        <span class="irr-form">过去式: <strong>{{ currentWord.irregular_forms.past }}</strong></span>
+                        <span class="irr-form">过去分词: <strong>{{ currentWord.irregular_forms.pp }}</strong></span>
+                    </div>
 
                     <p v-if="currentWord.example_sentence" class="example-sentence">
                         💬 {{ currentWord.example_sentence }}

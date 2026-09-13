@@ -54,11 +54,15 @@ def init_db():
             db.rollback()
         
         # 检查是否已有数据，增量导入缺失的系统词库
+        from word_data import enrich_word
         system_libraries = get_system_libraries()
         for lib_data in system_libraries:
             existing_lib = db.query(WordLibrary).filter(WordLibrary.id == lib_data["id"]).first()
             if existing_lib:
                 continue
+            # 新词库导入前先做数据增强
+            for w in lib_data["words"]:
+                enrich_word(w)
             lib = WordLibrary(
                 id=lib_data["id"],
                 name=lib_data["name"],
@@ -69,6 +73,27 @@ def init_db():
                 created_at=lib_data["created_at"]
             )
             db.add(lib)
+
+        # 数据增强 pass：为已入库的词条补充词性/例句/不规则动词变化
+        enriched_count = 0
+        all_libs = db.query(WordLibrary).all()
+        for lib in all_libs:
+            try:
+                words = json.loads(lib.words)
+            except (ValueError, TypeError):
+                continue
+            lib_changed = False
+            for w in words:
+                if isinstance(w, dict) and enrich_word(w):
+                    lib_changed = True
+                    enriched_count += 1
+            if lib_changed:
+                lib.words = json.dumps(words, ensure_ascii=False)
+        if enriched_count:
+            db.commit()
+            print(f"词库数据增强完成，共更新 {enriched_count} 个词条")
+        else:
+            print("词库数据无需增强")
         
         db.commit()
         print("数据库初始化完成，系统词库已导入")
