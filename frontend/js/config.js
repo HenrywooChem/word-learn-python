@@ -1,7 +1,7 @@
 // 配置文件
 const CONFIG = {
     // API 基础地址
-    API_BASE: 'http://124.221.77.205:8000/api',
+    API_BASE: '/word/api',
     
     // 每日默认目标
     DEFAULT_DAILY_GOAL: 10,
