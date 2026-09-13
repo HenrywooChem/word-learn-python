@@ -112,7 +112,8 @@ def get_db() -> Session:
 
 def get_system_libraries():
     """系统词库数据"""
-    return [
+    from wordbank_shcep import get_shcep_libraries
+    libraries = [
         {
             "id": "sys-shanghai-6",
             "name": "上海版六年级上册",
@@ -722,6 +723,9 @@ def get_system_libraries():
             ],
         },
     ]
+    # 上海教育出版社·五四学制上册系列（6A/7A/8A，共18个单元词库）
+    libraries.extend(get_shcep_libraries())
+    return libraries
 
 
 if __name__ == "__main__":

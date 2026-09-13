@@ -404,6 +404,16 @@ EXTRA_EXAMPLES = {
 }
 
 
+# 合并教材不规则动词表（上海教育出版社 7A/8A 附录，约107词）
+try:
+    from wordbank_shcep import TEXTBOOK_IRREGULAR
+    for _base, _forms in TEXTBOOK_IRREGULAR.items():
+        if _base not in IRREGULAR_VERBS:
+            IRREGULAR_VERBS[_base] = _forms
+except ImportError:
+    pass
+
+
 def enrich_word(w: dict) -> bool:
     """为单个词条补充词性、不规则动词变化、缺失例句
     返回是否有修改"""

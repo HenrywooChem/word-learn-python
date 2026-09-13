@@ -139,6 +139,10 @@ class WordBase(BaseModel):
     phonetic: str
     meaning: str
     example_sentence: Optional[str] = None
+    pos: Optional[str] = None  # 词性
+    irregular_forms: Optional[dict] = None  # 不规则动词变化 {"past":..., "pp":...}
+    unit: Optional[str] = None  # 所属单元（教材词库）
+    page: Optional[str] = None  # 教材页码
 
 
 class WordLibraryBase(BaseModel):
