@@ -164,14 +164,12 @@ async function submitQuiz(wordId, score, isCorrect, selectedMeaning) {
 
 /**
  * 提交错题复习结果
+ * @param {number} wrongQuestionId 错题本记录 id（不是 word_id）
+ * @param {number} score 0-100，>=60 视为答对
  */
-async function submitReview(wordId, isCorrect) {
-    return await api('/learning/review', {
+async function submitReview(wrongQuestionId, score) {
+    return await api(`/learning/review?wrong_question_id=${encodeURIComponent(wrongQuestionId)}&score=${encodeURIComponent(score)}`, {
         method: 'POST',
-        body: JSON.stringify({
-            word_id: wordId,
-            is_correct: isCorrect,
-        }),
     });
 }
 
@@ -204,8 +202,8 @@ async function getUserStats() {
  * 更新每日目标
  */
 async function updateDailyGoal(goal) {
-    return await api('/records/daily-goal', {
-        method: 'POST',
+    return await api('/records/profile', {
+        method: 'PUT',
         body: JSON.stringify({ daily_goal: goal }),
     });
 }
@@ -214,9 +212,18 @@ async function updateDailyGoal(goal) {
 
 /**
  * 获取错题列表
+ * @param {string} [status] reviewing / mastered，不传返回全部
  */
-async function getWrongQuestions() {
-    return await api('/wrong-questions');
+async function getWrongQuestions(status) {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return await api(`/wrong-questions${query}`);
+}
+
+/**
+ * 获取错题本统计
+ */
+async function getWrongStats() {
+    return await api('/wrong-questions/stats');
 }
 
 /**
@@ -227,10 +234,10 @@ async function getDueWrongQuestions() {
 }
 
 /**
- * 删除错题
+ * 删除错题（参数是错题记录 id，不是 word_id）
  */
-async function deleteWrongQuestion(wordId) {
-    return await api(`/wrong-questions/${wordId}`, {
+async function deleteWrongQuestion(questionId) {
+    return await api(`/wrong-questions/${questionId}`, {
         method: 'DELETE',
     });
 }

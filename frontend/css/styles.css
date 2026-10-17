@@ -752,3 +752,208 @@ select.input {
         top: calc(24px + env(safe-area-inset-top));
     }
 }
+
+/* ==================== 错题本 & 积分说明 ==================== */
+
+.header-score-today {
+    font-style: normal;
+    font-size: 11px;
+    color: #f59e0b;
+    margin-left: 4px;
+}
+
+.btn-badge {
+    display: inline-block;
+    margin-left: 6px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 10px;
+}
+
+.stat-hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #9ca3af;
+    line-height: 1.5;
+}
+
+.rules-card summary {
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    color: #374151;
+}
+
+.rules-list {
+    margin: 12px 0 0 18px;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.9;
+}
+
+.rules-list strong {
+    color: #10b981;
+}
+
+.wrong-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.wrong-summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.wrong-summary-item strong {
+    font-size: 20px;
+    color: #1f2937;
+}
+
+.wrong-summary-item span {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.filter-tab {
+    flex: 1;
+    padding: 9px 0;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.filter-tab.active {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+    font-weight: 600;
+}
+
+.wrong-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.wrong-actions .btn {
+    flex: 1;
+    font-size: 13px;
+    padding: 11px 8px;
+}
+
+.wrong-actions .btn:disabled {
+    opacity: 0.45;
+}
+
+.empty-wrong {
+    padding: 40px 0;
+    line-height: 1.9;
+    font-style: normal;
+}
+
+.wrong-item {
+    padding: 14px;
+}
+
+.wrong-item-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.wrong-word {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.wrong-phonetic {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.fam-badge {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.fam-low {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.fam-mid {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.fam-high {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.wrong-meaning {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.wrong-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.wrong-item-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.wrong-item-actions .btn {
+    flex: 1;
+}
+
+.btn-small.btn-danger,
+.btn-danger.btn-small {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.text-orange {
+    color: #f59e0b;
+}
+
+.text-green {
+    color: #10b981;
+}

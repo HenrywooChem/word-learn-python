@@ -127,15 +127,23 @@ def get_today_learning(
     new_learned = daily_record.words_learned if daily_record else 0
     review_completed = daily_record.review_completed if daily_record else 0
     
+    # 错题本总数（复习中 + 已掌握）
+    wrong_total = db.query(WrongQuestion).filter(
+        WrongQuestion.user_id == current_user.id
+    ).count()
+
     return {
         "daily_goal": daily_goal,
         "new_words_learned": new_learned,
         "review_completed": review_completed,
         "remaining_new": len(all_new_words),
         "remaining_review": len(review_words) - review_count,
+        "due_today": len(review_words),
+        "wrong_total": wrong_total,
         "today_tasks": today_tasks,
         "signed_in": daily_record.signed_in if daily_record else False,
         "total_score": daily_record.total_score if daily_record else 0,
+        "today_points": daily_record.total_score if daily_record else 0,
         "review_count": len(review_words_today),
         "new_count": len(new_words_today)
     }
@@ -186,10 +194,13 @@ def create_learning_session(
                 meaning=word_info["meaning"]
             )
     
-    # 更新用户总分
+    # 积分变动：答对+1，答错-0.5（注意：total_score 是测评得分，不能当作积分累加）
+    points_delta = 1 if not is_wrong else -0.5
+
+    # 更新用户积分
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if profile:
-        profile.total_score += session_data.total_score
+        profile.total_score += points_delta
     
     # 更新或创建每日记录
     daily_record = db.query(DailyRecord).filter(
@@ -199,13 +210,13 @@ def create_learning_session(
     
     if daily_record:
         daily_record.words_learned += 1
-        daily_record.total_score += session_data.total_score
+        daily_record.total_score += points_delta
     else:
         daily_record = DailyRecord(
             user_id=current_user.id,
             date=today,
             words_learned=1,
-            total_score=session_data.total_score,
+            total_score=points_delta,
             signed_in=False
         )
         db.add(daily_record)
@@ -215,18 +226,33 @@ def create_learning_session(
     return {
         "message": "学习记录已保存",
         "session_id": session.id,
-        "added_to_wrong_book": is_wrong
+        "added_to_wrong_book": is_wrong,
+        "points_delta": points_delta,
+        "user_total_score": profile.total_score if profile else 0
     }
 
 
 @router.post("/review")
-def submit_review_result(
-    wrong_question_id: int,
-    score: int,
+async def submit_review_result(
+    request: Request,
+    wrong_question_id: int = Query(None),
+    score: int = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """提交错题复习结果"""
+    # 兼容 query 和 JSON body 两种传参
+    if wrong_question_id is None or score is None:
+        try:
+            body = await request.json()
+            wrong_question_id = wrong_question_id if wrong_question_id is not None else body.get("wrong_question_id")
+            score = score if score is not None else body.get("score")
+        except Exception:
+            pass
+
+    if wrong_question_id is None or score is None:
+        raise HTTPException(status_code=400, detail="缺少 wrong_question_id 或 score")
+
     today = datetime.now().strftime("%Y-%m-%d")
     
     question = db.query(WrongQuestion).filter(
@@ -295,7 +321,13 @@ def submit_review_result(
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
     if profile:
         profile.total_score += score_change
-    
+
+    # 今日积分同步累计
+    if daily_record:
+        daily_record.total_score += score_change
+    else:
+        daily_record.total_score = score_change
+
     db.commit()
     
     return {
@@ -305,6 +337,8 @@ def submit_review_result(
         "status": question.status,
         "score_change": score_change,
         "total_score": profile.total_score if profile else 0,
+        "user_total_score": profile.total_score if profile else 0,
+        "daily_points": daily_record.total_score,
         "familiarity": question.familiarity
     }
 
@@ -372,7 +406,9 @@ def sign_in(
     result = {
         "message": "签到成功",
         "bonus_score": bonus_score,
-        "continuous_signin_days": profile.continuous_signin_days if profile else 0
+        "continuous_signin_days": profile.continuous_signin_days if profile else 0,
+        "user_total_score": profile.total_score if profile else 0,
+        "daily_points": daily_record.total_score if daily_record else 0
     }
     if profile and profile.continuous_signin_days >= 7:
         result["continuous_bonus"] = bonus_score - 1
@@ -618,6 +654,8 @@ async def submit_quiz_result(
         "total_score": total_score,
         "score_change": score_change,  # 本次积分变动
         "user_total_score": profile.total_score if profile else 0,  # 用户总积分
+        "daily_points": daily_record.total_score if daily_record else 0,  # 今日累计积分
+        "familiarity": wrong_entry.familiarity if wrong_entry else None,
         "correct_meaning": target_word["meaning"] if target_word else "",
         "added_to_wrong_book": not is_correct and target_word is not None
     }

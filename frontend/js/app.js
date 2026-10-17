@@ -20,6 +20,7 @@ const app = createApp({
         const currentUser = ref(null);
         const profile = reactive({
             total_score: 0,
+            today_points: 0,
             daily_goal: 10,
         });
 
@@ -56,6 +57,9 @@ const app = createApp({
             daily_goal: 10,
             remaining_new: 0,
             remaining_review: 0,
+            due_today: 0,
+            wrong_total: 0,
+            today_points: 0,
             signed_in: false,
             continuous_signin_days: 0,
             today_tasks: [],
@@ -77,6 +81,17 @@ const app = createApp({
         const selectedOption = ref(null);
         const isCorrect = ref(false);
         const isPlayingAudio = ref(false);
+
+        // 错题本
+        const wrongList = ref([]);
+        const wrongFilter = ref('all');
+        const wrongLoading = ref(false);
+        const wrongStats = reactive({
+            total_wrong: 0,
+            reviewing: 0,
+            mastered: 0,
+            due_today: 0,
+        });
 
         // Toast 提示
         const toast = reactive({
@@ -171,6 +186,15 @@ const app = createApp({
             try {
                 const options = await getQuizOptions(task.word_id);
                 currentOptions.value = options.options || [];
+                // 用题库返回的最新释义/例句/词性补全（复习任务里没有这些字段）
+                currentWord.value = {
+                    ...task,
+                    meaning: options.meaning || task.meaning,
+                    phonetic: options.phonetic || task.phonetic,
+                    example_sentence: options.example_sentence || task.example_sentence || '',
+                    pos: options.pos || task.pos || '',
+                    irregular_forms: options.irregular_forms || task.irregular_forms || null,
+                };
             } catch (error) {
                 showToast('加载选项失败');
             }
@@ -297,7 +321,14 @@ const app = createApp({
             loading.value = true;
             try {
                 const data = await dailySignIn();
-                profile.total_score += data.bonus_score || 0;
+                if (typeof data.user_total_score === 'number') {
+                    profile.total_score = data.user_total_score;
+                } else {
+                    profile.total_score += data.bonus_score || 0;
+                }
+                if (typeof data.daily_points === 'number') {
+                    profile.today_points = data.daily_points;
+                }
                 todayData.signed_in = true;
                 if (data.continuous_signin_days) {
                     profile.continuous_signin_days = data.continuous_signin_days;
@@ -325,16 +356,40 @@ const app = createApp({
             isCorrect.value = option.text === currentWord.value.meaning;
             showResult.value = true;
 
+            const task = currentWord.value;
+            const isReviewTask = task.taskType === 'review' || task.type === 'review';
+
             try {
                 const score = isCorrect.value ? 100 : 0;
-                await submitQuiz(
-                    currentWord.value.word_id,
-                    score,
-                    isCorrect.value,
-                    option.text  // 发送选中的选项文本供后端验证
-                );
+                let result;
+                if (isReviewTask) {
+                    // 复习任务必须走错题复习接口：更新错题状态、下次复习日期、今日复习数
+                    result = await submitReview(task.id, score);
+                } else {
+                    result = await submitQuiz(
+                        task.word_id,
+                        score,
+                        isCorrect.value,
+                        option.text  // 发送选中的选项文本供后端验证
+                    );
+                }
+
+                // 积分实时反馈
+                const delta = typeof result.score_change === 'number' ? result.score_change : 0;
+                if (typeof result.user_total_score === 'number') {
+                    profile.total_score = result.user_total_score;
+                } else if (delta) {
+                    profile.total_score = Math.round((profile.total_score + delta) * 10) / 10;
+                }
+                if (typeof result.daily_points === 'number') {
+                    profile.today_points = result.daily_points;
+                }
+                if (delta) {
+                    showToast(`${isCorrect.value ? '答对' : '答错'} ${delta > 0 ? '+' : ''}${delta} 积分`);
+                }
             } catch (error) {
                 console.error('提交结果失败:', error);
+                showToast('提交失败: ' + error.message);
             }
 
             // 答对时朗读例句，播放完成后自动跳转
@@ -462,15 +517,106 @@ const app = createApp({
         // ==================== 设置相关 ====================
 
         async function saveDailyGoal() {
+            const goal = Math.round(Number(editingDailyGoal.value) || 0);
+            if (goal < 1 || goal > 200) {
+                showToast('每日目标需在 1~200 之间');
+                return;
+            }
             loading.value = true;
             try {
-                await updateDailyGoal(editingDailyGoal.value);
-                profile.daily_goal = editingDailyGoal.value;
+                const result = await updateDailyGoal(goal);
+                profile.daily_goal = result.daily_goal || goal;
+                editingDailyGoal.value = profile.daily_goal;
+                // 目标变了，今日任务配额也跟着变，刷新一下
+                const todayLearning = await getTodayLearning();
+                Object.assign(todayData, todayLearning);
                 showToast('保存成功！');
             } catch (error) {
                 showToast('保存失败: ' + error.message);
             } finally {
                 loading.value = false;
+            }
+        }
+
+        // ==================== 错题本 ====================
+
+        async function loadWrongBook() {
+            wrongLoading.value = true;
+            try {
+                const status = wrongFilter.value === 'all' ? null : wrongFilter.value;
+                const [list, stats] = await Promise.all([getWrongQuestions(status), getWrongStats()]);
+                wrongList.value = list || [];
+                Object.assign(wrongStats, stats || {});
+            } catch (error) {
+                showToast('加载错题本失败: ' + error.message);
+            } finally {
+                wrongLoading.value = false;
+            }
+        }
+
+        async function openWrongBook() {
+            currentPage.value = 'wrongbook';
+            await loadWrongBook();
+        }
+
+        function setWrongFilter(filter) {
+            wrongFilter.value = filter;
+            loadWrongBook();
+        }
+
+        // 把错题转换成学习页能消费的任务结构
+        function wrongToTask(q) {
+            return {
+                type: 'review',
+                taskType: 'review',
+                id: q.id,                 // 错题记录 id，提交复习用这个
+                wrong_question_id: q.id,
+                word_id: q.word_id,
+                word: q.word,
+                phonetic: q.phonetic,
+                meaning: q.meaning,
+                example_sentence: '',
+                wrong_count: q.wrong_count,
+                correct_count: q.correct_count,
+                familiarity: q.familiarity,
+            };
+        }
+
+        function startReviewList(items) {
+            if (!items.length) {
+                showToast('没有可复习的错题');
+                return;
+            }
+            todayTasks.value = items.map(wrongToTask);
+            currentWordIndex.value = 0;
+            currentPage.value = 'learning';
+            loadNextWord();
+        }
+
+        function startReviewOne(q) {
+            startReviewList([q]);
+        }
+
+        function startReviewAll() {
+            const items = wrongList.value.filter(q => q.status === 'reviewing');
+            // 全部复习时不受"今天到期"限制，主动复习也是有效的
+            startReviewList(items);
+        }
+
+        function startReviewDue() {
+            const items = wrongList.value.filter(q => q.is_due);
+            startReviewList(items);
+        }
+
+        async function removeWrongQuestion(q) {
+            if (!window.confirm(`确定从错题本删除「${q.word}」？删除后不再出现在复习里。`)) return;
+            try {
+                await deleteWrongQuestion(q.id);
+                showToast('已删除');
+                await loadWrongBook();
+                await loadHomeData();
+            } catch (error) {
+                showToast('删除失败: ' + error.message);
             }
         }
 
@@ -501,6 +647,10 @@ const app = createApp({
             isCorrect,
             isPlayingAudio,
             toast,
+            wrongList,
+            wrongFilter,
+            wrongLoading,
+            wrongStats,
 
             // 方法
             handleLogin,
@@ -515,6 +665,13 @@ const app = createApp({
             toggleLibrary,
             saveSelectedLibraries,
             saveDailyGoal,
+            openWrongBook,
+            loadWrongBook,
+            setWrongFilter,
+            startReviewOne,
+            startReviewAll,
+            startReviewDue,
+            removeWrongQuestion,
         };
     },
 });

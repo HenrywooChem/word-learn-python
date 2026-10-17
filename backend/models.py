@@ -42,7 +42,7 @@ class UserProfile(Base):
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), unique=True)
-    total_score: Mapped[int] = mapped_column(Integer, default=0)
+    total_score: Mapped[float] = mapped_column(Float, default=0)
     last_sign_in: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     daily_goal: Mapped[int] = mapped_column(Integer, default=10)
     selected_library_ids: Mapped[str] = mapped_column(String, default="[]")  # JSON string
@@ -87,7 +87,7 @@ class DailyRecord(Base):
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     date: Mapped[str] = mapped_column(String)
     words_learned: Mapped[int] = mapped_column(Integer, default=0)
-    total_score: Mapped[int] = mapped_column(Integer, default=0)
+    total_score: Mapped[float] = mapped_column(Float, default=0)
     signed_in: Mapped[bool] = mapped_column(Boolean, default=False)
     review_completed: Mapped[int] = mapped_column(Integer, default=0)  # 错题复习完成数
     
@@ -180,7 +180,7 @@ class UserResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     user_id: str
-    total_score: int
+    total_score: float
     last_sign_in: Optional[str] = None
     daily_goal: int
     selected_library_ids: List[str]
@@ -233,7 +233,7 @@ class DailyRecordResponse(BaseModel):
     user_id: str
     date: str
     words_learned: int
-    total_score: int
+    total_score: float
     signed_in: bool
     review_completed: int = 0
 

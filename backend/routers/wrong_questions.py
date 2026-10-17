@@ -44,6 +44,7 @@ def get_wrong_questions(
     db: Session = Depends(get_db)
 ):
     """获取错题本列表"""
+    today = datetime.now().strftime("%Y-%m-%d")
     query = db.query(WrongQuestion).filter(WrongQuestion.user_id == current_user.id)
     
     if status:
@@ -63,7 +64,8 @@ def get_wrong_questions(
             "correct_count": q.correct_count,
             "status": q.status,
             "next_review_date": q.next_review_date,
-            "last_review_date": q.last_review_date
+            "last_review_date": q.last_review_date,
+            "is_due": q.status == "reviewing" and q.next_review_date <= today
         }
         for q in questions
     ]

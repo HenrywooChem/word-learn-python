@@ -27,6 +27,7 @@ def get_profile(
         return {
             "user_id": current_user.id,
             "total_score": 0,
+            "today_points": 0,
             "last_sign_in": None,
             "daily_goal": 10,
             "selected_library_ids": [],
@@ -44,10 +45,18 @@ def get_profile(
         LearningSession.user_id == current_user.id,
         LearningSession.total_score >= 80
     ).scalar() or 0
-    
+
+    # 今日积分变动（当天累计）
+    today = datetime.now().strftime("%Y-%m-%d")
+    today_record = db.query(DailyRecord).filter(
+        DailyRecord.user_id == current_user.id,
+        DailyRecord.date == today
+    ).first()
+
     return {
         "user_id": profile.user_id,
         "total_score": profile.total_score,
+        "today_points": today_record.total_score if today_record else 0,
         "last_sign_in": profile.last_sign_in,
         "daily_goal": profile.daily_goal,
         "selected_library_ids": json.loads(profile.selected_library_ids),
@@ -71,14 +80,21 @@ def update_profile(
         raise HTTPException(status_code=404, detail="用户配置不存在")
     
     if daily_goal is not None:
+        if daily_goal < 1 or daily_goal > 200:
+            raise HTTPException(status_code=400, detail="每日目标需在 1~200 之间")
         profile.daily_goal = daily_goal
     
     if selected_library_ids is not None:
         profile.selected_library_ids = json.dumps(selected_library_ids)
     
     db.commit()
+    db.refresh(profile)
     
-    return {"message": "设置已更新"}
+    return {
+        "message": "设置已更新",
+        "daily_goal": profile.daily_goal,
+        "selected_library_ids": json.loads(profile.selected_library_ids),
+    }
 
 
 @router.get("/daily")
