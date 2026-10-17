@@ -62,7 +62,7 @@ def init_db():
                 continue
             # 新词库导入前先做数据增强
             for w in lib_data["words"]:
-                enrich_word(w)
+                enrich_word(w, lib_data["id"])
             lib = WordLibrary(
                 id=lib_data["id"],
                 name=lib_data["name"],
@@ -84,7 +84,7 @@ def init_db():
                 continue
             lib_changed = False
             for w in words:
-                if isinstance(w, dict) and enrich_word(w):
+                if isinstance(w, dict) and enrich_word(w, lib.id):
                     lib_changed = True
                     enriched_count += 1
             if lib_changed:

@@ -4,6 +4,9 @@
 供 database.py 数据增强和 routers 动态查询使用
 """
 
+from word_examples_tv import TV_EXAMPLES
+from word_examples_fallback import TEXT_EXAMPLES
+
 # ==================== 词性表（覆盖全部系统词库词汇） ====================
 # n.=名词 v.=动词 adj.=形容词 adv.=副词 prep.=介词 pron.=代词
 # conj.=连词 num.=数词 interj.=感叹词 phr.=短语
@@ -414,17 +417,35 @@ except ImportError:
     pass
 
 
-def enrich_word(w: dict) -> bool:
-    """为单个词条补充词性、不规则动词变化、缺失例句
-    返回是否有修改"""
+def enrich_word(w: dict, lib_id: str = "") -> bool:
+    """为单个词条补充词性、不规则动词变化、例句
+    返回是否有修改
+
+    例句优先级：
+      7A/8A 词库且台词命中  -> 美剧台词例句（TV_EXAMPLES）
+      其他情况             -> 保留已有例句，缺失时用教学例句（EXTRA_EXAMPLES）
+    6A 词库即使与 7A/8A 同词，也不会被台词例句覆盖。
+    """
     changed = False
     key = w.get("word", "").strip().lower()
     if not w.get("pos") and key in POS_MAP:
         w["pos"] = POS_MAP[key]
         changed = True
-    if not w.get("example_sentence") and key in EXTRA_EXAMPLES:
-        w["example_sentence"] = EXTRA_EXAMPLES[key]
-        changed = True
+    is_junior = lib_id.startswith(("sys-7a-", "sys-8a-"))
+    if is_junior and key in TV_EXAMPLES:
+        tv_sentence = TV_EXAMPLES[key][0]
+        if w.get("example_sentence") != tv_sentence:
+            w["example_sentence"] = tv_sentence
+            w["example_source"] = "tv"
+            changed = True
+    elif not w.get("example_sentence"):
+        if is_junior and key in TEXT_EXAMPLES:
+            w["example_sentence"] = TEXT_EXAMPLES[key]
+            w["example_source"] = "text"
+            changed = True
+        elif key in EXTRA_EXAMPLES:
+            w["example_sentence"] = EXTRA_EXAMPLES[key]
+            changed = True
     if key in IRREGULAR_VERBS and not w.get("irregular_forms"):
         w["irregular_forms"] = IRREGULAR_VERBS[key]
         changed = True
