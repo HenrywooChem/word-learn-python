@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>单词学习</title>
-    <link rel="stylesheet" href="css/styles.css?v=5">
+    <link rel="stylesheet" href="css/styles.css?v=6">
     <script src="js/vue.prod.js?v=2"></script>
 </head>
 <body>
@@ -223,6 +223,7 @@
                         >🔊</button>
                     </div>
                     <p v-if="currentWord.phonetic" class="phonetic">{{ currentWord.phonetic }}</p>
+                    <p v-if="audioFailed" class="audio-hint">🔇 自动播放被浏览器拦截，点 🔊 收听发音</p>
                     <p v-if="posText(currentWord.pos)" class="pos-line">
                         词性：<strong>{{ posText(currentWord.pos) }}</strong>
                     </p>
@@ -278,6 +279,7 @@
                                 </button>
                             </div>
                             <p class="example-en" v-html="highlightExample"></p>
+                            <p class="example-zh" v-if="currentWord.example_zh">{{ currentWord.example_zh }}</p>
                             <p class="example-from" v-if="currentWord.example_source === 'tv'">
                                 —— 出自《破产姐妹》台词
                             </p>
@@ -406,6 +408,6 @@
 
     <script src="js/config.js?v=3"></script>
     <script src="js/api.js?v=7"></script>
-    <script src="js/app.js?v=15"></script>
+    <script src="js/app.js?v=16"></script>
 </body>
 </html>

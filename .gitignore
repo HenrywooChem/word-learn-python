@@ -61,3 +61,6 @@ jquery.js
 # Secrets
 .secret_key*.db-wal
 *.db-shm
+
+# 预生成的语音文件（体积大，用 tools/build_audio.py 重新生成）
+backend/audio/

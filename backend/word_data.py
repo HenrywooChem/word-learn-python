@@ -8,6 +8,7 @@ import re
 
 from word_examples_tv import TV_EXAMPLES
 from word_examples_fallback import TEXT_EXAMPLES
+from word_examples_zh import EXAMPLE_ZH, EXAMPLE_ZH_BY_SENTENCE, SENTENCE_FIX
 from word_forms import build_word_forms
 
 # ==================== 词性表（覆盖全部系统词库词汇） ====================
@@ -474,7 +475,13 @@ def enrich_word(w: dict, lib_id: str = "") -> bool:
             w["word_forms"] = forms
             changed = True
     is_junior = lib_id.startswith(("sys-7a-", "sys-8a-"))
-    if is_junior and key in TV_EXAMPLES:
+    if is_junior and key in SENTENCE_FIX:
+        fixed = SENTENCE_FIX[key]
+        if w.get("example_sentence") != fixed:
+            w["example_sentence"] = fixed
+            w["example_source"] = "text"
+            changed = True
+    elif is_junior and key in TV_EXAMPLES:
         tv_sentence = TV_EXAMPLES[key][0]
         if w.get("example_sentence") != tv_sentence:
             w["example_sentence"] = tv_sentence
@@ -488,10 +495,25 @@ def enrich_word(w: dict, lib_id: str = "") -> bool:
         elif key in EXTRA_EXAMPLES:
             w["example_sentence"] = EXTRA_EXAMPLES[key]
             changed = True
+
+    # 例句中文翻译（优先整句匹配；同一单词在不同词库例句可能不同）
+    sent = (w.get("example_sentence") or "").strip()
+    zh = EXAMPLE_ZH_BY_SENTENCE.get(sent) or EXAMPLE_ZH.get(key)
+    if zh and w.get("example_sentence") and w.get("example_zh") != zh:
+        w["example_zh"] = zh
+        changed = True
+
     if key in IRREGULAR_VERBS and not w.get("irregular_forms"):
         w["irregular_forms"] = IRREGULAR_VERBS[key]
         changed = True
     return changed
+
+
+def get_example_zh(word: str, sentence: str = "") -> str:
+    """取例句中文翻译：先按整句匹配，再退回按单词匹配"""
+    key = (word or "").strip().lower()
+    sent = (sentence or "").strip()
+    return EXAMPLE_ZH_BY_SENTENCE.get(sent) or EXAMPLE_ZH.get(key, "")
 
 
 def get_word_extra(word: str, pos: str = "") -> dict:

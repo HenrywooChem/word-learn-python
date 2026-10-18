@@ -139,6 +139,8 @@ class WordBase(BaseModel):
     phonetic: str
     meaning: str
     example_sentence: Optional[str] = None
+    example_zh: Optional[str] = None  # 例句中文翻译
+    example_source: Optional[str] = None  # tv / text
     pos: Optional[str] = None  # 词性
     irregular_forms: Optional[dict] = None  # 不规则动词变化 {"past":..., "pp":...}
     word_forms: Optional[dict] = None  # 词形变化：复数/三单/现在分词/过去式/比较级等

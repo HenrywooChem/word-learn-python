@@ -81,6 +81,7 @@ const app = createApp({
         const selectedOption = ref(null);
         const isCorrect = ref(false);
         const isPlayingAudio = ref(false);
+        const audioFailed = ref(false);
 
         // 错题本
         const wrongList = ref([]);
@@ -184,6 +185,9 @@ const app = createApp({
             showResult.value = false;
             selectedOption.value = null;
 
+            // 进入单词先读单词本身：放在 await 之前，保留用户手势，移动端才不会被拦
+            playAudio(task.word).catch(() => {});
+
             try {
                 const options = await getQuizOptions(task.word_id);
                 currentOptions.value = options.options || [];
@@ -193,6 +197,8 @@ const app = createApp({
                     meaning: options.meaning || task.meaning,
                     phonetic: options.phonetic || task.phonetic,
                     example_sentence: options.example_sentence || task.example_sentence || '',
+                    example_zh: options.example_zh || task.example_zh || '',
+                    example_source: options.example_source || task.example_source || '',
                     pos: options.pos || task.pos || '',
                     irregular_forms: options.irregular_forms || task.irregular_forms || null,
                     word_forms: options.word_forms || task.word_forms || null,
@@ -201,8 +207,26 @@ const app = createApp({
                 showToast('加载选项失败');
             }
 
-            // 进入单词先读单词本身（不阻塞界面）
-            playAudio(currentWord.value.word).catch(() => {});
+            // 预取下一题音频，减少等待
+            preloadTask(currentWordIndex.value + 1);
+        }
+
+        function preloadTask(idx) {
+            const next = todayTasks.value[idx];
+            if (!next) return;
+            preloadAudio(next.word);
+            if (next.example_sentence) preloadAudio(next.example_sentence);
+        }
+
+        function preloadAudio(text) {
+            if (!text) return;
+            try {
+                fetch(audioUrl(text), { cache: 'force-cache' }).catch(() => {});
+            } catch (e) {}
+        }
+
+        function audioUrl(text) {
+            return `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
         }
 
         // ==================== 生命周期 ====================
@@ -424,7 +448,6 @@ const app = createApp({
             if (!audioEl) {
                 audioEl = new Audio();
                 audioEl.preload = 'auto';
-                audioEl.crossOrigin = 'anonymous';
             }
             return audioEl;
         }
@@ -478,6 +501,13 @@ const app = createApp({
             const answeredKey = task.word_id;
             const isReviewTask = task.taskType === 'review' || task.type === 'review';
 
+            // 答对立刻朗读例句：在请求之前触发，保住用户手势（移动端关键）
+            let audioDone = null;
+            const exampleText = currentWord.value.example_sentence;
+            if (isCorrect.value && exampleText) {
+                audioDone = playAudio(exampleText).catch(() => false);
+            }
+
             try {
                 const score = isCorrect.value ? 100 : 0;
                 let result;
@@ -511,14 +541,13 @@ const app = createApp({
                 showToast('提交失败: ' + error.message);
             }
 
-            // 答对：立刻朗读例句，播完自动下一题（也可以手动点"下一题"）
+            // 答对：例句播完自动下一题（也可以手动点"下一题"）
             if (isCorrect.value) {
-                const exampleText = currentWord.value.example_sentence;
-                if (exampleText) {
-                    playAudio(exampleText).then(() => {
+                if (audioDone) {
+                    audioDone.then(() => {
                         // 播放过程中用户可能已手动翻页，避免重复跳转
                         if (currentWord.value && currentWord.value.word_id === answeredKey) {
-                            scheduleAdvance(500);
+                            scheduleAdvance(400);
                         }
                     });
                 } else {
@@ -542,38 +571,30 @@ const app = createApp({
 
         async function playAudio(text) {
             if (!text) return false;
-            isPlayingAudio.value = true;
             const el = getAudioEl();
+            isPlayingAudio.value = true;
 
             try {
                 el.pause();
                 el.volume = 1;
-                el.src = `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
-
-                // 等音频可播放（网络慢时最多等 8 秒，避免卡住流程）
-                await new Promise((resolve, reject) => {
-                    let done = false;
-                    const ok = () => { if (!done) { done = true; resolve(); } };
-                    const fail = () => { if (!done) { done = true; reject(new Error('音频加载失败')); } };
-                    el.oncanplaythrough = ok;
-                    el.onloadeddata = ok;
-                    el.onerror = fail;
-                    el.load();
-                    setTimeout(ok, 8000);
-                });
-
+                el.src = audioUrl(text);
+                // 直接 play()：保留用户手势，移动端不会因异步等待而丢掉播放权限
                 await el.play();
 
                 await new Promise(resolve => {
                     let done = false;
                     const fin = () => { if (!done) { done = true; resolve(); } };
                     el.onended = fin;
-                    el.onpause = fin;
-                    setTimeout(fin, 20000);
+                    el.onerror = fin;
+                    setTimeout(fin, 30000);
                 });
+                audioFailed.value = false;
                 return true;
             } catch (error) {
-                console.warn('后端 TTS 播放失败，尝试浏览器语音合成:', error);
+                console.warn('音频播放失败:', error && error.name, error && error.message);
+                if (error && error.name === 'NotAllowedError') {
+                    audioFailed.value = true;   // 被浏览器拦截，提示用户点喇叭
+                }
             } finally {
                 isPlayingAudio.value = false;
             }
@@ -787,6 +808,7 @@ const app = createApp({
             handleOptionClick,
             nextWord,
             playAudio,
+            audioFailed,
             replayExample,
             posText,
             formItems,

@@ -5,11 +5,12 @@
 import os
 import asyncio
 import tempfile
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
+from audio_cache import AUDIO_DIR, VOICE, cached_audio, audio_path, clean_for_tts
 from database import init_db
 from routers import auth, libraries, learning, records
 from routers.wrong_questions import router as wrong_questions_router
@@ -65,37 +66,39 @@ def health_check():
 
 @app.get("/api/tts")
 async def tts_endpoint(text: str = Query(..., min_length=1, max_length=500)):
-    """TTS接口 - 使用Edge TTS生成音频"""
+    """TTS 接口
+
+    优先返回预生成的静态音频（毫秒级），未命中时才尝试实时合成。
+    生产环境 Edge TTS 出口被拒时会快速降级为 503，前端改用浏览器语音。
+    """
+    spoken = clean_for_tts(text)
+    if not spoken:
+        raise HTTPException(status_code=400, detail="文本为空")
+
+    cache_headers = {"Cache-Control": "public, max-age=604800"}
+
+    hit = cached_audio(text)
+    if hit:
+        return FileResponse(hit, media_type="audio/mpeg", headers=cache_headers)
+
     if not EDGE_TTS_AVAILABLE:
-        return JSONResponse({"error": "TTS not available"}, status_code=503)
+        raise HTTPException(status_code=503, detail="音频暂不可用")
 
+    path = audio_path(text)
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tmp_path = tmp.name
-
-        communicate = edge_tts.Communicate(text, "en-US-JennyNeural")
-        await communicate.save(tmp_path)
-
-        def iterfile():
-            with open(tmp_path, "rb") as f:
-                yield from f
-            try:
-                os.unlink(tmp_path)
-            except:
-                pass
-
-        headers = {"Access-Control-Allow-Origin": "*"}
-        return StreamingResponse(
-            iterfile(),
-            media_type="audio/mpeg",
-            headers={"Content-Disposition": "inline; filename=tts.mp3"}
-        )
+        os.makedirs(AUDIO_DIR, exist_ok=True)
+        tmp_path = path + ".part"
+        communicate = edge_tts.Communicate(spoken, VOICE)
+        await asyncio.wait_for(communicate.save(tmp_path), timeout=15)
+        os.replace(tmp_path, path)
+        return FileResponse(path, media_type="audio/mpeg", headers=cache_headers)
     except Exception as e:
         try:
-            os.unlink(tmp_path)
-        except:
+            os.unlink(path + ".part")
+        except OSError:
             pass
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"[tts] 实时合成失败: {e}")
+        raise HTTPException(status_code=503, detail="音频暂不可用")
 
 
 @app.get("/")

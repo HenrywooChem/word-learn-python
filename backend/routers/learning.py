@@ -96,6 +96,7 @@ def get_today_learning(
                 "phonetic": w.phonetic,
                 "meaning": w.meaning,
                 "example_sentence": getattr(w, "example_sentence", None),
+                "example_zh": get_example_zh(w.word, getattr(w, "example_sentence", "") or ""),
                 **get_word_extra(w.word),
                 "wrong_count": w.wrong_count,
                 "correct_count": w.correct_count
@@ -111,6 +112,8 @@ def get_today_learning(
                 "phonetic": w["phonetic"],
                 "meaning": w["meaning"],
                 "example_sentence": w.get("example_sentence", ""),
+                "example_zh": w.get("example_zh", ""),
+                "example_source": w.get("example_source", ""),
                 **get_word_extra(w["word"])
             })
     
@@ -532,6 +535,9 @@ def get_quiz_options(
         "phonetic": target_word.get("phonetic", ""),
         "meaning": target_word.get("meaning", ""),
         "example_sentence": target_word.get("example_sentence", ""),
+        "example_zh": target_word.get("example_zh", "") or get_example_zh(
+            target_word.get("word", ""), target_word.get("example_sentence", "")
+        ),
         "example_source": target_word.get("example_source", ""),
         **get_word_extra(target_word.get("word", ""), target_word.get("pos", "")),
         "options": options
