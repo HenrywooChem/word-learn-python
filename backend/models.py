@@ -141,6 +141,7 @@ class WordBase(BaseModel):
     example_sentence: Optional[str] = None
     pos: Optional[str] = None  # 词性
     irregular_forms: Optional[dict] = None  # 不规则动词变化 {"past":..., "pp":...}
+    word_forms: Optional[dict] = None  # 词形变化：复数/三单/现在分词/过去式/比较级等
     unit: Optional[str] = None  # 所属单元（教材词库）
     page: Optional[str] = None  # 教材页码
 

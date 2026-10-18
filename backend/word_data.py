@@ -4,13 +4,18 @@
 供 database.py 数据增强和 routers 动态查询使用
 """
 
+import re
+
 from word_examples_tv import TV_EXAMPLES
 from word_examples_fallback import TEXT_EXAMPLES
+from word_forms import build_word_forms
 
 # ==================== 词性表（覆盖全部系统词库词汇） ====================
 # n.=名词 v.=动词 adj.=形容词 adv.=副词 prep.=介词 pron.=代词
 # conj.=连词 num.=数词 interj.=感叹词 phr.=短语
 POS_MAP = {
+    "could": "modal v.",
+    "shall": "modal v.",
     "abandon": "v.", "ability": "n.", "absence": "n.", "accept": "v.", "accomplish": "v.",
     "accurate": "adj.", "achieve": "v.", "across": "prep./adv.", "act": "v./n.", "action": "n.",
     "adequate": "adj.", "admire": "v.", "adventure": "n.", "afford": "v.", "afternoon": "n.",
@@ -111,6 +116,7 @@ POS_MAP = {
 # ==================== 不规则动词变化表 ====================
 # 键为动词原形（小写），值为 {"past": 过去式, "pp": 过去分词}
 IRREGULAR_VERBS = {
+    "be": {"past": "was/were", "pp": "been"},
     "break": {"past": "broke", "pp": "broken"},
     "break out": {"past": "broke out", "pp": "broken out"},
     "build": {"past": "built", "pp": "built"},
@@ -417,6 +423,33 @@ except ImportError:
     pass
 
 
+
+# 释义里混入的词性前缀（如 "adj. 经典的 / n. 经典作品"）
+_POS_PREFIX = re.compile(
+    r"^\s*(?:n|v|adj|adv|prep|conj|pron|num|det|art|interj|modal\s+v|phr|v\.phr)\.\s*",
+    re.IGNORECASE,
+)
+
+
+def clean_meaning(meaning: str) -> str:
+    """清理释义里的词性前缀
+
+    "adj. 经典的 / n. （书、电影或歌曲的）经典作品"
+      -> "经典的；经典作品"
+    只处理确实带词性前缀的条目，避免误伤 "米/公尺" 这类正常释义。
+    """
+    text = (meaning or "").strip()
+    if not text or not _POS_PREFIX.match(text):
+        return text
+    parts = [_POS_PREFIX.sub("", x).strip() for x in re.split(r"\s+/\s+", text)]
+    seen, out = set(), []
+    for x in parts:
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return "；".join(out)
+
+
 def enrich_word(w: dict, lib_id: str = "") -> bool:
     """为单个词条补充词性、不规则动词变化、例句
     返回是否有修改
@@ -428,9 +461,18 @@ def enrich_word(w: dict, lib_id: str = "") -> bool:
     """
     changed = False
     key = w.get("word", "").strip().lower()
+    cleaned = clean_meaning(w.get("meaning", ""))
+    if cleaned and cleaned != w.get("meaning"):
+        w["meaning"] = cleaned
+        changed = True
     if not w.get("pos") and key in POS_MAP:
         w["pos"] = POS_MAP[key]
         changed = True
+    if not w.get("word_forms"):
+        forms = build_word_forms(key, w.get("pos", ""), IRREGULAR_VERBS)
+        if forms:
+            w["word_forms"] = forms
+            changed = True
     is_junior = lib_id.startswith(("sys-7a-", "sys-8a-"))
     if is_junior and key in TV_EXAMPLES:
         tv_sentence = TV_EXAMPLES[key][0]
@@ -452,10 +494,15 @@ def enrich_word(w: dict, lib_id: str = "") -> bool:
     return changed
 
 
-def get_word_extra(word: str) -> dict:
-    """按单词文本动态查询词性和不规则变化（不依赖数据库，用于复习题等场景）"""
+def get_word_extra(word: str, pos: str = "") -> dict:
+    """按单词文本动态查询词性、词形变化、不规则动词（不依赖数据库）
+
+    pos 可取词库里的词性（如 "n. & v."），不传则查 POS_MAP。
+    """
     key = (word or "").strip().lower()
+    p = (pos or POS_MAP.get(key) or "").strip()
     return {
-        "pos": POS_MAP.get(key),
+        "pos": p or None,
         "irregular_forms": IRREGULAR_VERBS.get(key),
+        "word_forms": build_word_forms(key, p, IRREGULAR_VERBS),
     }

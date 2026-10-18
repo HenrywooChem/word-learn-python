@@ -957,3 +957,177 @@ select.input {
 .text-green {
     color: #10b981;
 }
+
+/* ==================== 单词信息区（词性 / 词形变化） ==================== */
+
+.word-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 12px 0 4px;
+}
+
+.word-title-row .word {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.speak-btn {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+
+.speak-btn:active {
+    transform: scale(.94);
+    background: #eef2ff;
+}
+
+.speak-btn.playing {
+    border-color: #a5b4fc;
+    background: #eef2ff;
+    animation: speak-pulse 1s ease-in-out infinite;
+}
+
+@keyframes speak-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, .35); }
+    50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+}
+
+.pos-line {
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.pos-line strong {
+    color: #6d28d9;
+    font-weight: 600;
+}
+
+.word-forms {
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 10px 0 4px;
+}
+
+.forms-head {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6d28d9;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.forms-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+}
+
+.form-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.form-item em {
+    font-style: normal;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.form-item strong {
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.form-irregular {
+    border-color: #fdba74;
+    background: #fffbeb;
+}
+
+.form-irregular strong {
+    color: #b45309;
+}
+
+/* ==================== 答对后的例句卡 ==================== */
+
+.example-card {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 14px 0 8px;
+    text-align: left;
+}
+
+.example-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: #15803d;
+    margin-bottom: 6px;
+}
+
+.link-btn {
+    border: none;
+    background: transparent;
+    color: #059669;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.link-btn:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.example-en {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #14532d;
+    word-break: break-word;
+}
+
+.example-en .hit-word {
+    color: #b91c1c;
+    font-weight: 700;
+    background: #fef2f2;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+.example-from {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #86efac;
+    color: #6b7280;
+}
+
+.wrong-tip {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #b91c1c;
+}

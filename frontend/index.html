@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>单词学习</title>
-    <link rel="stylesheet" href="css/styles.css?v=3">
+    <link rel="stylesheet" href="css/styles.css?v=5">
     <script src="js/vue.prod.js?v=2"></script>
 </head>
 <body>
@@ -213,22 +213,34 @@
                         <span v-else class="tag tag-new">📖 新词</span>
                     </div>
 
-                    <h2 class="word">{{ currentWord.word }} <span v-if="currentWord.pos" class="pos-badge">{{ currentWord.pos }}</span></h2>
-                    <p class="phonetic">{{ currentWord.phonetic }}</p>
-
-                    <div v-if="currentWord.irregular_forms" class="irregular-forms">
-                        <span class="irr-title">⚡ 不规则动词</span>
-                        <span class="irr-form">过去式: <strong>{{ currentWord.irregular_forms.past }}</strong></span>
-                        <span class="irr-form">过去分词: <strong>{{ currentWord.irregular_forms.pp }}</strong></span>
+                    <div class="word-title-row">
+                        <h2 class="word">{{ currentWord.word }}</h2>
+                        <button
+                            @click="playAudio(currentWord.word)"
+                            class="speak-btn"
+                            :class="{ playing: isPlayingAudio }"
+                            title="朗读单词"
+                        >🔊</button>
                     </div>
-
-                    <p v-if="currentWord.example_sentence" class="example-sentence">
-                        💬 {{ currentWord.example_sentence }}
+                    <p v-if="currentWord.phonetic" class="phonetic">{{ currentWord.phonetic }}</p>
+                    <p v-if="posText(currentWord.pos)" class="pos-line">
+                        词性：<strong>{{ posText(currentWord.pos) }}</strong>
                     </p>
 
-                    <button @click="playAudio(currentWord.word)" class="btn btn-outline audio-btn" :disabled="isPlayingAudio">
-                        {{ isPlayingAudio ? '🔊 播放中...' : '🔊 听发音' }}
-                    </button>
+                    <div v-if="formItems.length" class="word-forms">
+                        <div class="forms-head">词形变化</div>
+                        <div class="forms-list">
+                            <span
+                                v-for="f in formItems"
+                                :key="f.key"
+                                class="form-item"
+                                :class="{ 'form-irregular': f.irregular }"
+                            >
+                                <em>{{ f.label }}</em>
+                                <strong>{{ f.value }}</strong>
+                            </span>
+                        </div>
+                    </div>
 
                     <p class="instruction">选择正确的中文意思：</p>
 
@@ -256,12 +268,26 @@
                             {{ isCorrect ? '回答正确！' : '回答错误' }}
                         </h3>
                         <p class="text-sm" v-if="!isCorrect">正确答案：<strong>{{ currentWord.meaning }}</strong></p>
+                        <p class="wrong-tip" v-if="!isCorrect">📕 已加入错题本，之后会安排复习</p>
 
-                        <p v-if="isCorrect && currentWordIndex < todayTasks.length - 1" class="text-sm text-muted">
-                            🔊 例句播放后自动跳转...
+                        <div v-if="isCorrect && currentWord.example_sentence" class="example-card">
+                            <div class="example-head">
+                                <span>💬 例句</span>
+                                <button class="link-btn" @click="replayExample" :disabled="isPlayingAudio">
+                                    🔊 再听一遍
+                                </button>
+                            </div>
+                            <p class="example-en" v-html="highlightExample"></p>
+                            <p class="example-from" v-if="currentWord.example_source === 'tv'">
+                                —— 出自《破产姐妹》台词
+                            </p>
+                        </div>
+
+                        <p v-if="isCorrect" class="text-sm text-muted">
+                            {{ isPlayingAudio ? '🔊 正在朗读例句，读完自动进入下一题' : '即将进入下一题...' }}
                         </p>
 
-                        <button v-if="!isCorrect" @click="nextWord" class="btn btn-primary next-btn">
+                        <button @click="nextWord" class="btn btn-primary next-btn">
                             {{ currentWordIndex < todayTasks.length - 1 ? '下一题 →' : '完成 🎉' }}
                         </button>
                     </div>
@@ -380,6 +406,6 @@
 
     <script src="js/config.js?v=3"></script>
     <script src="js/api.js?v=7"></script>
-    <script src="js/app.js?v=14"></script>
+    <script src="js/app.js?v=15"></script>
 </body>
 </html>

@@ -279,9 +279,12 @@ async def submit_review_result(
     # 计算下次复习日期
     from routers.wrong_questions import calculate_next_review
     question.next_review_date = calculate_next_review(question.wrong_count, question.correct_count)
-    
-    # 标记为已掌握
-    if question.correct_count >= 5 and question.wrong_count <= 2:
+
+    # 复习答错 -> 重新回到"复习中"（即使之前已标记掌握）
+    if not is_correct:
+        question.status = "reviewing"
+    # 连续答对足够多 -> 标记已掌握
+    elif question.correct_count >= 5 and question.wrong_count <= 2:
         question.status = "mastered"
     
     question.updated_at = today
@@ -529,7 +532,8 @@ def get_quiz_options(
         "phonetic": target_word.get("phonetic", ""),
         "meaning": target_word.get("meaning", ""),
         "example_sentence": target_word.get("example_sentence", ""),
-        **get_word_extra(target_word.get("word", "")),
+        "example_source": target_word.get("example_source", ""),
+        **get_word_extra(target_word.get("word", ""), target_word.get("pos", "")),
         "options": options
     }
 

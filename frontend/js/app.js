@@ -1,6 +1,6 @@
 // Vue 应用主模块
 
-const { createApp, ref, reactive, onMounted } = Vue;
+const { createApp, ref, reactive, computed, onMounted } = Vue;
 
 // 创建 Vue 应用
 const app = createApp({
@@ -171,6 +171,7 @@ const app = createApp({
 
         // 加载下一个单词
         async function loadNextWord() {
+            clearAdvance();
             if (currentWordIndex.value >= todayTasks.value.length) {
                 showToast('学习完成！🎉');
                 currentPage.value = 'home';
@@ -186,7 +187,7 @@ const app = createApp({
             try {
                 const options = await getQuizOptions(task.word_id);
                 currentOptions.value = options.options || [];
-                // 用题库返回的最新释义/例句/词性补全（复习任务里没有这些字段）
+                // 用题库返回的最新释义/例句/词性/词形补全（复习任务里没有这些字段）
                 currentWord.value = {
                     ...task,
                     meaning: options.meaning || task.meaning,
@@ -194,17 +195,14 @@ const app = createApp({
                     example_sentence: options.example_sentence || task.example_sentence || '',
                     pos: options.pos || task.pos || '',
                     irregular_forms: options.irregular_forms || task.irregular_forms || null,
+                    word_forms: options.word_forms || task.word_forms || null,
                 };
             } catch (error) {
                 showToast('加载选项失败');
             }
 
-            // 自动播放单词读音
-            try {
-                await playAudio(task.word);
-            } catch (err) {
-                console.error('自动播放失败:', err);
-            }
+            // 进入单词先读单词本身（不阻塞界面）
+            playAudio(currentWord.value.word).catch(() => {});
         }
 
         // ==================== 生命周期 ====================
@@ -344,7 +342,127 @@ const app = createApp({
 
         // ==================== 学习相关 ====================
 
+        // 词性中文名（学生看得懂）
+        const POS_NAMES = {
+            'n.': '名词', 'v.': '动词', 'adj.': '形容词', 'adv.': '副词',
+            'pron.': '代词', 'prep.': '介词', 'conj.': '连词', 'num.': '数词',
+            'det.': '限定词', 'art.': '冠词', 'interj.': '感叹词',
+            'phr.': '短语', 'v.phr.': '动词短语', 'modal v.': '情态动词',
+            'abbr.': '缩写',
+        };
+
+        function posText(pos) {
+            if (!pos) return '';
+            return String(pos)
+                .replace(/&/g, '/')
+                .split('/')
+                .map(p => p.trim())
+                .filter(Boolean)
+                .map(p => (POS_NAMES[p] ? `${p} ${POS_NAMES[p]}` : p))
+                .join(' / ');
+        }
+
+        // 词形变化展示项
+        const FORM_LABELS = {
+            plural: '复数',
+            third: '第三人称单数',
+            ing: '现在分词',
+            past: '过去式',
+            pp: '过去分词',
+            comparative: '比较级',
+            superlative: '最高级',
+        };
+
+        const formItems = computed(() => {
+            const forms = (currentWord.value && currentWord.value.word_forms) || {};
+            const irr = (currentWord.value && currentWord.value.irregular_forms) || {};
+            return Object.keys(FORM_LABELS)
+                .filter(k => forms[k])
+                .map(k => ({ key: k, label: FORM_LABELS[k], value: forms[k], irregular: !!irr[k] }));
+        });
+
+        // 例句里高亮目标词（含各种词形）
+        const highlightExample = computed(() => {
+            const w = currentWord.value;
+            if (!w || !w.example_sentence) return '';
+            const escapeHtml = s => String(s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const text = escapeHtml(w.example_sentence);
+
+            const forms = new Set();
+            const base = (w.word || '').trim();
+            if (base) forms.add(base);
+            const f = w.word_forms || {};
+            Object.values(f).forEach(v => {
+                if (typeof v !== 'string') return;
+                v.split('/').forEach(x => {
+                    const t = x.trim().replace(/^(more|most)\s+/i, '');
+                    if (t) forms.add(t);
+                });
+            });
+            const pattern = [...forms]
+                .sort((a, b) => b.length - a.length)
+                .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                .join('|');
+            if (!pattern) return text;
+            try {
+                return text.replace(new RegExp(`(?<![A-Za-z])(${pattern})(?![A-Za-z])`, 'gi'),
+                    '<b class="hit-word">$1</b>');
+            } catch (e) {
+                // 老浏览器不支持后行断言时退回 \b
+                return text.replace(new RegExp(`\\b(${pattern})\\b`, 'gi'), '<b class="hit-word">$1</b>');
+            }
+        });
+
+        // 音频：复用一个元素，进入学习页时用用户手势解锁自动播放
+        let audioEl = null;
+        let audioUnlocked = false;
+        const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+
+        function getAudioEl() {
+            if (!audioEl) {
+                audioEl = new Audio();
+                audioEl.preload = 'auto';
+                audioEl.crossOrigin = 'anonymous';
+            }
+            return audioEl;
+        }
+
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            try {
+                const a = getAudioEl();
+                a.src = SILENT_WAV;
+                a.volume = 0;
+                const p = a.play();
+                const reset = () => { try { a.pause(); a.volume = 1; } catch (e) {} };
+                if (p && typeof p.then === 'function') p.then(reset).catch(() => { a.volume = 1; });
+                else reset();
+                audioUnlocked = true;
+            } catch (e) {
+                console.warn('音频解锁失败:', e);
+            }
+        }
+
+        // 自动跳转计时器（答对后播完例句再进下一题）
+        let advanceTimer = null;
+        function clearAdvance() {
+            if (advanceTimer) {
+                clearTimeout(advanceTimer);
+                advanceTimer = null;
+            }
+        }
+        function scheduleAdvance(delay) {
+            clearAdvance();
+            advanceTimer = setTimeout(() => {
+                advanceTimer = null;
+                nextWord();
+            }, delay);
+        }
+
         function startLearning() {
+            unlockAudio();          // 必须在点击手势内解锁，否则自动朗读会被浏览器拦截
             currentPage.value = 'learning';
             loadLearningTasks();
         }
@@ -357,6 +475,7 @@ const app = createApp({
             showResult.value = true;
 
             const task = currentWord.value;
+            const answeredKey = task.word_id;
             const isReviewTask = task.taskType === 'review' || task.type === 'review';
 
             try {
@@ -392,33 +511,25 @@ const app = createApp({
                 showToast('提交失败: ' + error.message);
             }
 
-            // 答对时朗读例句，播放完成后自动跳转
+            // 答对：立刻朗读例句，播完自动下一题（也可以手动点"下一题"）
             if (isCorrect.value) {
-                const exampleText = currentWord.value.example_sentence || currentWord.value.word;
-
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                try {
-                    await playAudio(exampleText);
-                } catch (error) {
-                    console.error('播放例句失败:', error);
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 300));
-
-                if (currentWordIndex.value < todayTasks.value.length - 1) {
-                    currentWordIndex.value++;
-                    await loadNextWord();
+                const exampleText = currentWord.value.example_sentence;
+                if (exampleText) {
+                    playAudio(exampleText).then(() => {
+                        // 播放过程中用户可能已手动翻页，避免重复跳转
+                        if (currentWord.value && currentWord.value.word_id === answeredKey) {
+                            scheduleAdvance(500);
+                        }
+                    });
                 } else {
-                    showToast('学习完成！🎉');
-                    currentPage.value = 'home';
-                    loadHomeData();
+                    scheduleAdvance(700);
                 }
             }
         }
 
-        // 手动跳转下一个单词（答错时使用）
+        // 手动跳转下一个单词
         async function nextWord() {
+            clearAdvance();
             if (currentWordIndex.value < todayTasks.value.length - 1) {
                 currentWordIndex.value++;
                 await loadNextWord();
@@ -430,63 +541,75 @@ const app = createApp({
         }
 
         async function playAudio(text) {
+            if (!text) return false;
             isPlayingAudio.value = true;
-            // 优先使用后端 Edge TTS
+            const el = getAudioEl();
+
             try {
-                const audio = new Audio();
-                audio.src = `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
-                audio.crossOrigin = "anonymous";
+                el.pause();
+                el.volume = 1;
+                el.src = `${CONFIG.API_BASE}/tts?text=${encodeURIComponent(text)}`;
 
+                // 等音频可播放（网络慢时最多等 8 秒，避免卡住流程）
                 await new Promise((resolve, reject) => {
-                    audio.oncanplaythrough = resolve;
-                    audio.onerror = () => reject(new Error('音频加载失败'));
-                    audio.load();
+                    let done = false;
+                    const ok = () => { if (!done) { done = true; resolve(); } };
+                    const fail = () => { if (!done) { done = true; reject(new Error('音频加载失败')); } };
+                    el.oncanplaythrough = ok;
+                    el.onloadeddata = ok;
+                    el.onerror = fail;
+                    el.load();
+                    setTimeout(ok, 8000);
                 });
 
-                await audio.play();
+                await el.play();
 
-                await new Promise((resolve) => {
-                    audio.onended = resolve;
+                await new Promise(resolve => {
+                    let done = false;
+                    const fin = () => { if (!done) { done = true; resolve(); } };
+                    el.onended = fin;
+                    el.onpause = fin;
+                    setTimeout(fin, 20000);
                 });
-
-                return;
+                return true;
             } catch (error) {
-                console.error('后端 TTS 播放失败:', error);
+                console.warn('后端 TTS 播放失败，尝试浏览器语音合成:', error);
+            } finally {
+                isPlayingAudio.value = false;
             }
 
-            // 后端 TTS 失败，尝试 Web Speech API
+            // 兜底：浏览器语音合成
             try {
-                if ('speechSynthesis' in window) {
-                    speechSynthesis.cancel();
-
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US';
-                    utterance.rate = 0.9;
-                    utterance.pitch = 1.0;
-                    utterance.volume = 1.0;
-
-                    const voices = speechSynthesis.getVoices();
-                    const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) ||
-                                         voices.find(v => v.lang.startsWith('en'));
-                    if (englishVoice) {
-                        utterance.voice = englishVoice;
-                    }
-
-                    return new Promise((resolve) => {
-                        utterance.onend = () => resolve();
-                        utterance.onerror = () => {
-                            console.error('Web Speech API 错误');
-                            resolve();
-                        };
-                        speechSynthesis.speak(utterance);
-                    });
-                }
+                if (!('speechSynthesis' in window)) return false;
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                const voices = speechSynthesis.getVoices();
+                const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) ||
+                                     voices.find(v => v.lang.startsWith('en'));
+                if (englishVoice) utterance.voice = englishVoice;
+                isPlayingAudio.value = true;
+                return await new Promise(resolve => {
+                    utterance.onend = () => resolve(true);
+                    utterance.onerror = () => resolve(false);
+                    speechSynthesis.speak(utterance);
+                });
             } catch (error) {
                 console.error('播放音频失败:', error);
+                return false;
             } finally {
                 isPlayingAudio.value = false;
             }
         }
+
+        function replayExample() {
+            const w = currentWord.value;
+            if (w && w.example_sentence) playAudio(w.example_sentence);
+        }
+
 
         // ==================== 词库相关 ====================
 
@@ -587,6 +710,8 @@ const app = createApp({
                 showToast('没有可复习的错题');
                 return;
             }
+            unlockAudio();
+            clearAdvance();
             todayTasks.value = items.map(wrongToTask);
             currentWordIndex.value = 0;
             currentPage.value = 'learning';
@@ -662,6 +787,10 @@ const app = createApp({
             handleOptionClick,
             nextWord,
             playAudio,
+            replayExample,
+            posText,
+            formItems,
+            highlightExample,
             toggleLibrary,
             saveSelectedLibraries,
             saveDailyGoal,
