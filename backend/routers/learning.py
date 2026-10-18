@@ -14,7 +14,7 @@ from models import User, UserProfile, WordLibrary, LearningSession, DailyRecord,
 from routers.auth import get_current_user
 from routers.wrong_questions import add_to_wrong_book
 from models import LearningSessionCreate
-from word_data import get_word_extra
+from word_data import get_word_extra, get_example_zh
 
 router = APIRouter(prefix="/api/learning", tags=["学习"])
 
